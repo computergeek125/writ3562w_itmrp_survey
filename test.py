@@ -54,6 +54,7 @@ def mc2list(qcol):
     return {"keys":keys, "bars":bars, "names":names, "labels":labels}
 
 def plot_mc(qcol, title=None, xlabel=None, ylabel=None, width=0.4, color='g'):
+    # based on: http://matplotlib.org/examples/api/barchart_demo.html
     data = mc2list(qcol)
 
     pN = len(data["bars"])
@@ -63,9 +64,12 @@ def plot_mc(qcol, title=None, xlabel=None, ylabel=None, width=0.4, color='g'):
     rects1 = ax.bar(ind, data["bars"], width, color=color)
 
     # add some text for labels, title and axes ticks
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
-    ax.set_title(title)
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
     ax.set_xticks(ind + width/2)
     ax.set_xticklabels(data["labels"])
 
@@ -76,6 +80,77 @@ def plot_mc(qcol, title=None, xlabel=None, ylabel=None, width=0.4, color='g'):
 
     plt.show(block=False)
     return (fig, ax)
+
+def mcpaired(qcol1, qcol2):
+    qid1 = survey['exportColumnMap'][qcol1]['question']
+    qid2 = survey['exportColumnMap'][qcol2]['question']
+    question1 = survey['questions'][qid1]
+    question2 = survey['questions'][qid2]
+    if question1['questionType']['type'] != "MC":
+        sys.stderr.write("{0} is not a multiple choice question\n".format(qcol1))
+        return None
+    if question2['questionType']['type'] != "MC":
+        sys.stderr.write("{0} is not a multiple choice question\n".format(qcol2))
+        return None
+    choices1 = question1['choices']
+    choices2 = question2['choices']
+    pairs = []
+    for i in survey_data['responses']:
+        ans1 = i[qcol1]
+        ans2 = i[qcol2]
+        pairs += [(ans1, ans2)]
+    names1 = []
+    keys1 = sorted(list(choices1.keys()))
+    for i in keys1:
+        names1 += [choices1[i]['choiceText']]
+    if len(names1) == len(keys1)-1:
+        names1 += ['Other']
+    labels1=[textwrap.fill(text,15) for text in names1]
+    names2 = []
+    keys2 = sorted(list(choices2.keys()))
+    for i in keys2:
+        names2 += [choices2[i]['choiceText']]
+    if len(names2) == len(keys2)-1:
+        names2 += ['Other']
+    labels2=[textwrap.fill(text,10) for text in names2]
+    return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2, "labels1":labels1,"labels2":labels2}
+
+def scatter_mc(qcol1, qcol2, title=None, xlabel=None, ylabel=None, dp=15):
+    data = mcpaired(qcol1, qcol2)
+    freqs = []
+    pairs = []
+    for p in data['pairs']:
+        found = False
+        for i in range(len(freqs)):
+            if pairs[i][0] == p[0] and pairs[i][1] == p[1]:
+                found = True
+                freqs[i] += 1
+                break
+        if not found:
+            pairs += [p]
+            freqs += [1]
+    for i in range(len(freqs)):
+        print(pairs[i], freqs[i])
+    x,y = zip(*pairs)
+    area = np.pi * (dp * np.array(freqs))**2
+    fig, ax = plt.subplots()
+    xt = list(map(int,data["keys1"]))
+    yt = list(map(int,data["keys2"]))
+    ax.set_xticks(xt)
+    ax.set_yticks(yt)
+    ax.set_xbound(lower=xt[0]-0.5, upper=xt[-1]+0.5)
+    ax.set_ybound(lower=yt[0]-0.5, upper=yt[-1]+0.5)
+    ax.set_xticklabels(data["labels1"])
+    ax.set_yticklabels(data["labels2"])
+    ax.autoscale(enable=False, axis="both", tight=True)
+    if xlabel:
+        ax.set_xlabel(xlabel)
+    if ylabel:
+        ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    plt.scatter(x, y, s=area, alpha=0.5)
+    plt.show(block=False)
 
 def mp_autolabel(rects, ax):
     # attach some text labels
