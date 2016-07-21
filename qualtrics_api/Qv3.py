@@ -107,6 +107,7 @@ class Qualtrics_v3():
         rdoc_path = rdoc_unzip_path + "/" + os.listdir(rdoc_unzip_path)[0]
         return rdoc_path
 
+    # TODO: cleans up ALL Qualtrics temporary files, not just ones from this session!
     def response_clean(self):
         tmp = tempfile.gettempdir()
         cldir = os.listdir(tmp)
