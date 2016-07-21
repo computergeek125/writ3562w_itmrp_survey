@@ -1,0 +1,6 @@
+# Python files
+__pycache__
+*.pyc
+
+# Apple Files
+.DS_Store
