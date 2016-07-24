@@ -8,18 +8,18 @@ import textwrap
 
 from qualtrics_api.Qv3 import Qualtrics_v3 as Q
 
-q = Q("umn.qualtrics.com","V0kaCnBnK6J9IKUsNrshV8nO6QNhbK7XJH3je0fD")
+q = Q(settings.qualtrics_datacenter,settings.qualtrics_api_key)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-R", "--results", help="Sets the results file without re-downloading the results from Qualtrics", default=None)
 args = parser.parse_args()
 
-survey = q.survey_get("SV_8zSxHnxahE2h0j3")
+survey = q.survey_get(settings.qualtrics_survey)
 if args.results:
     survey_file = args.results
     sys.stdout.write("Reusing results from {0}\n".format(survey_file))
 else:
-    survey_file = q.response_export("SV_8zSxHnxahE2h0j3","json")
+    survey_file = q.response_export(settings.qualtrics_survey,"json")
 
 with open(survey_file) as data_file:    
     survey_data = json.load(data_file)
