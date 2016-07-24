@@ -53,7 +53,7 @@ def mc2list(qcol):
     labels=[textwrap.fill(text,15) for text in names]
     return {"keys":keys, "bars":bars, "names":names, "labels":labels}
 
-def plot_mc(qcol, title=None, xlabel=None, ylabel=None, width=0.4, color='g'):
+def plot_mc(qcol, title=None, xlabel=None, ylabel=None, width=0.4, color='g', alpha=0.5):
     # based on: http://matplotlib.org/examples/api/barchart_demo.html
     data = mc2list(qcol)
 
@@ -115,7 +115,7 @@ def mcpaired(qcol1, qcol2):
     labels2=[textwrap.fill(text,10) for text in names2]
     return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2, "labels1":labels1,"labels2":labels2}
 
-def scatter_mc(qcol1, qcol2, title=None, xlabel=None, ylabel=None, dp=15):
+def scatter_mc(qcol1, qcol2, c=None, title=None, xlabel=None, ylabel=None, dp=15):
     data = mcpaired(qcol1, qcol2)
     freqs = []
     pairs = []
@@ -129,8 +129,6 @@ def scatter_mc(qcol1, qcol2, title=None, xlabel=None, ylabel=None, dp=15):
         if not found:
             pairs += [p]
             freqs += [1]
-    for i in range(len(freqs)):
-        print(pairs[i], freqs[i])
     x,y = zip(*pairs)
     area = np.pi * (dp * np.array(freqs))**2
     fig, ax = plt.subplots()
@@ -147,10 +145,13 @@ def scatter_mc(qcol1, qcol2, title=None, xlabel=None, ylabel=None, dp=15):
         ax.set_xlabel(xlabel)
     if ylabel:
         ax.set_ylabel(ylabel)
+        plt.subplots_adjust(left=0.15)
     if title:
         ax.set_title(title)
-    plt.scatter(x, y, s=area, alpha=0.5)
+    plt.scatter(x, y, c=c, s=area, alpha=0.5)
     plt.show(block=False)
+
+#TODO: Text analysis (report) Grab text with selectable metadata, filtering null answers
 
 def mp_autolabel(rects, ax):
     # attach some text labels
