@@ -1,3 +1,6 @@
+# Project files
+settings.py
+
 # Python files
 __pycache__
 *.pyc
