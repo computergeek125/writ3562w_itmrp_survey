@@ -1,12 +1,14 @@
 import argparse
 import json
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 from pprint import pprint
 import sys
 import textwrap
 
 from qualtrics_api.Qv3 import Qualtrics_v3 as Q
+import settings
 
 q = Q(settings.qualtrics_datacenter,settings.qualtrics_api_key)
 
@@ -26,6 +28,11 @@ with open(survey_file) as data_file:
 
 N = len(survey_data['responses'])
 print("Imported {0} responses".format(N))
+
+sys.stdout.write("Survey Name: {0}\n".format(survey['name']))
+
+# Init Matplotlib
+mpl.rcParams['backend'] = "TkAgg"
 
 def mc2list(qcol):
     qid = survey['exportColumnMap'][qcol]['question']
@@ -160,3 +167,28 @@ def mp_autolabel(rects, ax):
         ax.text(rect.get_x() + rect.get_width()/2., 1.05*height,
                 '%d' % int(height),
                 ha='center', va='bottom')
+
+def nars(nars_list):
+    nars_score = []
+    for respondant in survey_data['responses']:
+        r_vals = []
+        #sys.stdout.write("{0}: ".format(respondant['ResponseID']))
+        for sq in nars_list:
+            ans = respondant[sq]
+            #sys.stdout.write("'{0}' ".format(ans))
+            if ans == "":
+                pass # Throw out questions they didn't answer
+            else:
+                r_vals.append(int(ans))
+        #sys.stdout.write('\n')
+        if r_vals:
+            r_mean = np.nanmean(r_vals, dtype=np.float64)
+            r_std = np.nanstd(r_vals, dtype=np.float64)
+        else:
+            r_mean = np.NaN
+            r_std = np.NaN
+        nars_score.append({"ResponseID":respondant['ResponseID'], "mean":r_mean, "std":r_std })
+    return nars_score
+def print_nars(nars_processed):
+    for i in nars_processed:
+        sys.stdout.write("{0}: m={1} s={2}\n".format(i['ResponseID'], i['mean'], i['std']))
