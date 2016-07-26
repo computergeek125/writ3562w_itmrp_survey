@@ -3,6 +3,7 @@ import json
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import pandas
 from pprint import pprint
 import sys
 import textwrap
@@ -22,6 +23,7 @@ if args.results:
     sys.stdout.write("Reusing results from {0}\n".format(survey_file))
 else:
     survey_file = q.response_export(settings.qualtrics_survey,"json")
+    sys.stdout.write("Opening {0}\n".format(survey_file))
 
 with open(survey_file) as data_file:    
     survey_data = json.load(data_file)
@@ -34,11 +36,14 @@ sys.stdout.write("Survey Name: {0}\n".format(survey['name']))
 # Init Matplotlib
 mpl.rcParams['backend'] = "TkAgg"
 
-def mc2list(qcol):
-    qid = survey['exportColumnMap'][qcol]['question']
-    question = survey['questions'][qid]
-    if question['questionType']['type'] != "MC":
-        sys.stderr.write("{0} is not a multiple choice question\n".format(qcol))
+def mc2list(qcol, label_length=15, label_clip=-1):
+    try:
+        qid = survey['exportColumnMap'][qcol]['question']
+        question = survey['questions'][qid]
+    except KeyError:
+        raise RuntimeError("{0} is not a multiple choice, single-answer question\n".format(qcol))
+    if question['questionType']['type'] != "MC" and question['questionType']['selector'] != "SAVR":
+        raise RuntimeError("{0} is not a multiple choice, single-answer question\n".format(qcol))
         return None
     choices = question['choices']
     rdata_raw = {}
@@ -57,12 +62,58 @@ def mc2list(qcol):
     for i in keys:
         bars += [rdata_raw[i]]
         names += [choices[i]['choiceText']]
-    labels=[textwrap.fill(text,15) for text in names]
+    labels_clipped = [label_clipper(text,label_clip) for text in names]
+    labels = [textwrap.fill(text,label_length) for text in labels_clipped]
     return {"keys":keys, "bars":bars, "names":names, "labels":labels}
 
-def plot_mc(qcol, title=None, xlabel=None, ylabel=None, width=0.4, color='g', alpha=0.5):
+def ma2list(qcol, label_length=15, label_clip=-1): #Compiles the raw respondants from a multiple-choice-multiple-answer question
+    qcols = {}
+    for i in survey['exportColumnMap'].keys():
+        if i.startswith(qcol+"_"):
+            if i.endswith("_TEXT"):
+                continue
+            try:
+                qcols[i] = survey['exportColumnMap'][i]['choice'].split(".")
+            except KeyError:
+                raise RuntimeError("{0} is not a multiple choice-multiple answer question\n".format(qcol))
+    qn = sorted(list(qcols.keys()))
+    qid = survey['exportColumnMap'][qn[0]]['question']
+    question = survey['questions'][qid]
+    if question['questionType']['type'] != "MC" and question['questionType']['selector'] != "MAVR":
+        raise RuntimeError("{0} is not a multiple choice-multiple answer question\n".format(qcol))
+        return None
+    choices = question['choices']
+    rdata_raw = {}
+    for i in qn:
+        rdata_raw[i] = 0
+    for i in survey_data['responses']:
+        for j in i:
+            if j in qn:
+                #print(j)
+                ans = i[j]
+                #print(ans)
+                if (ans):
+                    rdata_raw[j] += 1
+    bars = []
+    names = []
+    keys = []
+    for i in qn:
+        bars.append(rdata_raw[i])
+        c = qcols[i][2]
+        names.append(choices[c]['choiceText'])
+        keys.append(c)
+    labels_clipped = [label_clipper(text,label_clip) for text in names]
+    labels = [textwrap.fill(text,label_length) for text in labels_clipped]
+    return {"keys":keys, "bars":bars, "names":names, "labels":labels}
+
+def label_clipper(label, clip): # set clip to negative to bypass this
+    if len(label) > clip and clip > 0:
+        label = label[:clip] + "..."
+    return label
+
+def plot_mc(qcol, listifier=mc2list, label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, width=0.4, color='g', alpha=0.5):
     # based on: http://matplotlib.org/examples/api/barchart_demo.html
-    data = mc2list(qcol)
+    data = listifier(qcol, label_length=label_length, label_clip=label_clip)
 
     pN = len(data["bars"])
     ind = np.arange(pN)  # the x locations for the groups
@@ -168,7 +219,7 @@ def mp_autolabel(rects, ax):
                 '%d' % int(height),
                 ha='center', va='bottom')
 
-def nars(nars_list):
+def nars(nars_list): #maybe reimplement using pandas?
     nars_score = []
     for respondant in survey_data['responses']:
         r_vals = []
@@ -189,6 +240,33 @@ def nars(nars_list):
             r_std = np.NaN
         nars_score.append({"ResponseID":respondant['ResponseID'], "mean":r_mean, "std":r_std })
     return nars_score
+def nars_inverted(nars_list): # This may or may not work...
+    nars_score = []
+    for respondant in survey_data['responses']:
+        r_vals = []
+        #sys.stdout.write("{0}: ".format(respondant['ResponseID']))
+        for sq in nars_list:
+            ans = respondant[sq]
+            #sys.stdout.write("'{0}' ".format(ans))
+            if ans == "":
+                pass # Throw out questions they didn't answer
+            else:
+                r_vals.append(likert_invert(int(ans)))
+        #sys.stdout.write('\n')
+        if r_vals:
+            r_mean = np.nanmean(r_vals, dtype=np.float64)
+            r_std = np.nanstd(r_vals, dtype=np.float64)
+        else:
+            r_mean = np.NaN
+            r_std = np.NaN
+        nars_score.append({"ResponseID":respondant['ResponseID'], "mean":r_mean, "std":r_std })
+    return nars_score
+def likert_invert(input_num, scale):
+    if (scale % 2 == 0):
+        raise ValueError("Likert scales must be odd numbers!  You provided a scale of {0}".format(scale))
+    if (input_num < 1 or input_num > scale):
+        raise ValueError("Likert scale input must be between 1 and {0} inclusive".format(scale))
+    return scale - input_num +1
 def print_nars(nars_processed):
     for i in nars_processed:
         sys.stdout.write("{0}: m={1} s={2}\n".format(i['ResponseID'], i['mean'], i['std']))
