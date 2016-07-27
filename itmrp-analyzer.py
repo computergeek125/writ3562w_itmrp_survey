@@ -58,7 +58,9 @@ def mc2list(qcol, label_length=15, label_clip=-1):
     #   rdata[choices[i]['choiceText']] = rdata_raw[i]
     bars = []
     names = []
-    keys = sorted(list(rdata_raw.keys()))
+    kl = list(rdata_raw.keys())
+    kl.sort(key=int)
+    keys = kl
     for i in keys:
         bars += [rdata_raw[i]]
         names += [choices[i]['choiceText']]
@@ -76,7 +78,8 @@ def ma2list(qcol, label_length=15, label_clip=-1): #Compiles the raw respondants
                 qcols[i] = survey['exportColumnMap'][i]['choice'].split(".")
             except KeyError:
                 raise RuntimeError("{0} is not a multiple choice-multiple answer question\n".format(qcol))
-    qn = sorted(list(qcols.keys()))
+    qn = sorted(qcols.keys(), key=lambda k: int(qcols[k][2]))
+    print(qn)
     qid = survey['exportColumnMap'][qn[0]]['question']
     question = survey['questions'][qid]
     if question['questionType']['type'] != "MC" and question['questionType']['selector'] != "MAVR":
@@ -106,20 +109,20 @@ def ma2list(qcol, label_length=15, label_clip=-1): #Compiles the raw respondants
     labels = [textwrap.fill(text,label_length) for text in labels_clipped]
     return {"keys":keys, "bars":bars, "names":names, "labels":labels}
 
-def label_clipper(label, clip): # set clip to negative to bypass this
+def label_clipper(label, clip): # set clip to negative to bypass this code
     if len(label) > clip and clip > 0:
         label = label[:clip] + "..."
     return label
 
-def plot_mc(qcol, listifier=mc2list, label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, width=0.4, color='g', alpha=0.5):
+def plot_mc(qcol, listifier=mc2list, label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, xtick_rotation=-45, xtick_labels=None, bar_width=0.4, color='g', alpha=0.5):
     # based on: http://matplotlib.org/examples/api/barchart_demo.html
     data = listifier(qcol, label_length=label_length, label_clip=label_clip)
 
     pN = len(data["bars"])
-    ind = np.arange(pN)  # the x locations for the groups
+    xt = np.arange(pN)  # the x locations for the groups
 
     fig, ax = plt.subplots()
-    rects1 = ax.bar(ind, data["bars"], width, color=color)
+    rects1 = ax.bar(xt, data["bars"], bar_width, color=color, alpha=alpha)
 
     # add some text for labels, title and axes ticks
     if xlabel:
@@ -127,9 +130,18 @@ def plot_mc(qcol, listifier=mc2list, label_length=15, label_clip=-1, title=None,
     if ylabel:
         ax.set_ylabel(ylabel)
     if title:
-        ax.set_title(title)
-    ax.set_xticks(ind + width/2)
-    ax.set_xticklabels(data["labels"])
+        ax.set_title(title, fontsize="xx-large", y=1.04)
+    ax.set_xticks(xt + bar_width/2)
+    ax.set_xbound(lower=xt[0]+bar_width/2-0.5, upper=xt[-1]+bar_width/2+0.5)
+    mb = max(data['bars'])
+    ax.set_ybound(upper=mb*1.07)
+    if xtick_labels:
+        ax.set_xticklabels(xtick_labels, rotation=xtick_rotation)
+    else:
+        ax.set_xticklabels(data["labels"], rotation=xtick_rotation)
+    ax.autoscale(enable=False, axis="x", tight=True)
+    bot_off = (-np.sin(np.radians(xtick_rotation))) * (label_length * 0.0155)
+    fig.subplots_adjust(bottom=bot_off)
 
     #ax.legend((rects1[0], rects2[0]), ('Men', 'Women'))
     
@@ -158,14 +170,18 @@ def mcpaired(qcol1, qcol2):
         ans2 = i[qcol2]
         pairs += [(ans1, ans2)]
     names1 = []
-    keys1 = sorted(list(choices1.keys()))
+    kl1 = list(choices1.keys())
+    kl1.sort(key=int)
+    keys1 = kl1
     for i in keys1:
         names1 += [choices1[i]['choiceText']]
     if len(names1) == len(keys1)-1:
         names1 += ['Other']
     labels1=[textwrap.fill(text,15) for text in names1]
     names2 = []
-    keys2 = sorted(list(choices2.keys()))
+    kl2 = list(choices2.keys())
+    kl2.sort(key=int)
+    keys2 = kl2
     for i in keys2:
         names2 += [choices2[i]['choiceText']]
     if len(names2) == len(keys2)-1:
@@ -215,7 +231,7 @@ def mp_autolabel(rects, ax):
     # attach some text labels
     for rect in rects:
         height = rect.get_height()
-        ax.text(rect.get_x() + rect.get_width()/2., 1.05*height,
+        ax.text(rect.get_x() + rect.get_width()/2., 1.01*height,
                 '%d' % int(height),
                 ha='center', va='bottom')
 
