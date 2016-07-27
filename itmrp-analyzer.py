@@ -36,7 +36,7 @@ sys.stdout.write("Survey Name: {0}\n".format(survey['name']))
 # Init Matplotlib
 mpl.rcParams['backend'] = "TkAgg"
 
-def mc2list(qcol, label_length=15, label_clip=-1):
+def mc2list(qcol):
     try:
         qid = survey['exportColumnMap'][qcol]['question']
         question = survey['questions'][qid]
@@ -64,11 +64,9 @@ def mc2list(qcol, label_length=15, label_clip=-1):
     for i in keys:
         bars += [rdata_raw[i]]
         names += [choices[i]['choiceText']]
-    labels_clipped = [label_clipper(text,label_clip) for text in names]
-    labels = [textwrap.fill(text,label_length) for text in labels_clipped]
-    return {"keys":keys, "bars":bars, "names":names, "labels":labels}
+    return {"keys":keys, "bars":bars, "names":names}
 
-def ma2list(qcol, label_length=15, label_clip=-1): #Compiles the raw respondants from a multiple-choice-multiple-answer question
+def ma2list(qcol): #Compiles the raw respondants from a multiple-choice-multiple-answer question
     qcols = {}
     for i in survey['exportColumnMap'].keys():
         if i.startswith(qcol+"_"):
@@ -79,7 +77,6 @@ def ma2list(qcol, label_length=15, label_clip=-1): #Compiles the raw respondants
             except KeyError:
                 raise RuntimeError("{0} is not a multiple choice-multiple answer question\n".format(qcol))
     qn = sorted(qcols.keys(), key=lambda k: int(qcols[k][2]))
-    print(qn)
     qid = survey['exportColumnMap'][qn[0]]['question']
     question = survey['questions'][qid]
     if question['questionType']['type'] != "MC" and question['questionType']['selector'] != "MAVR":
@@ -114,15 +111,20 @@ def label_clipper(label, clip): # set clip to negative to bypass this code
         label = label[:clip] + "..."
     return label
 
-def plot_mc(qcol, listifier=mc2list, label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, xtick_rotation=-45, xtick_labels=None, bar_width=0.4, color='g', alpha=0.5):
+def plot_mc(data, label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, xtick_rotation=-45, xtick_labels=None, bar_width=0.4, color='g', alpha=0.5):
+    # data should be of format: {'keys': ['1', '2', '3', '4', '5'], 'names': ['One', 'Two', 'Three', 'Four', 'Five'], 'bars': [5, 13, 1, 1, 0]}
     # based on: http://matplotlib.org/examples/api/barchart_demo.html
-    data = listifier(qcol, label_length=label_length, label_clip=label_clip)
-
     pN = len(data["bars"])
     xt = np.arange(pN)  # the x locations for the groups
 
     fig, ax = plt.subplots()
     rects1 = ax.bar(xt, data["bars"], bar_width, color=color, alpha=alpha)
+    if xtick_labels:
+        names = xtick_labels
+    else:
+        names = data["labels"]
+    labels_clipped = [label_clipper(text,label_clip) for text in names]
+    labels = [textwrap.fill(text,label_length) for text in labels_clipped]
 
     # add some text for labels, title and axes ticks
     if xlabel:
@@ -135,12 +137,9 @@ def plot_mc(qcol, listifier=mc2list, label_length=15, label_clip=-1, title=None,
     ax.set_xbound(lower=xt[0]+bar_width/2-0.5, upper=xt[-1]+bar_width/2+0.5)
     mb = max(data['bars'])
     ax.set_ybound(upper=mb*1.07)
-    if xtick_labels:
-        ax.set_xticklabels(xtick_labels, rotation=xtick_rotation)
-    else:
-        ax.set_xticklabels(data["labels"], rotation=xtick_rotation)
+    ax.set_xticklabels(labels, rotation=xtick_rotation)
     ax.autoscale(enable=False, axis="x", tight=True)
-    bot_off = (-np.sin(np.radians(xtick_rotation))) * (label_length * 0.0155)
+    bot_off = (-np.sin(np.radians(xtick_rotation))) * (label_length * 0.016)
     fig.subplots_adjust(bottom=bot_off)
 
     #ax.legend((rects1[0], rects2[0]), ('Men', 'Women'))
