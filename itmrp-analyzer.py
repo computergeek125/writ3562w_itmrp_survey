@@ -5,7 +5,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as mpl_colors
 import matplotlib.cm as mpl_cm
-import pandas
+import pandas as pd
 from pprint import pprint
 import sys
 import textwrap
@@ -46,8 +46,12 @@ def mc2list(qcol):
         question = survey['questions'][qid]
     except KeyError:
         raise RuntimeError("{0} is not a multiple choice, single-answer question\n".format(qcol))
-    if question['questionType']['type'] != "MC" and question['questionType']['selector'] != "SAVR":
-        raise RuntimeError("{0} is not a multiple choice, single-answer question\n".format(qcol))
+    if question['questionType']['type'] == "MC" and question['questionType']['selector'] == "SAVR":
+        pass
+    elif question['questionType']['type'] == "Matrix" and question['questionType']['subSelector'] == "SingleAnswer":
+        matrix=True
+    else:
+        raise RuntimeError("{0} is not a multiple choice, single-answer type question\n".format(qcol))
         return None
     choices = question['choices']
     rdata_raw = {}
@@ -64,10 +68,13 @@ def mc2list(qcol):
     #   rdata[choices[i]['choiceText']] = rdata_raw[i]
     bars = []
     names = []
-    keys = sorted(rdata_raw.keys(), keys=int)
+    keys = sorted(rdata_raw.keys(), key=int)
     for i in keys:
         bars += [rdata_raw[i]]
-        names += [choices[i]['choiceText']]
+        if not matrix:
+            names.append(choices[i]['choiceText'])
+        else:
+            names.append(choices[i]['description'])
     return {"keys":keys, "bars":bars, "names":names}
 
 def ma2list(qcol): #Compiles the raw respondants from a multiple-choice-multiple-answer question
@@ -127,7 +134,8 @@ def label_clipper(label, clip): # set clip to negative to bypass this code
         label = label[:clip] + "..."
     return label
 
-def plot_mc(data, legend=[], label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, xtick_rotation=-45, xtick_labels=None, group_width=0.7, color=None, alpha=0.5):
+def plot_mc(data, legend=[], label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, 
+    xtick_rotation=-45, xtick_labels=None, group_width=0.7, color=None, alpha=0.5):
     # data should be of format: {'keys': ['1', '2', '3', '4', '5'], 'names': ['One', 'Two', 'Three', 'Four', 'Five'], 'bars': [5, 13, 1, 1, 0]}
     # based on: http://matplotlib.org/examples/api/barchart_demo.html
     fig, ax = plt.subplots()
@@ -182,7 +190,7 @@ def plot_mc(data, legend=[], label_length=15, label_clip=-1, title=None, xlabel=
     ax.set_xticklabels(labels, rotation=xtick_rotation)
     ax.autoscale(enable=False, axis="x", tight=True)
     bot_off = (-np.sin(np.radians(xtick_rotation))) * (label_length * 0.016)
-    fig.subplots_adjust(left=0.05, bottom=bot_off)
+    fig.subplots_adjust(bottom=bot_off)
 
     if dlen > 1:
         lr = []
@@ -198,7 +206,7 @@ def plot_mc(data, legend=[], label_length=15, label_clip=-1, title=None, xlabel=
             if li > lmax:
                 lmax = li
         ax.legend(lr, legend, bbox_to_anchor=(1,1), bbox_transform=fig.transFigure)
-        fig.subplots_adjust(right=1-(0.016*li+0.05))
+        fig.subplots_adjust(left=0.05, right=1-(0.016*li+0.05))
     
     for i in rects:
         mp_autolabel(i, ax)
@@ -228,20 +236,58 @@ def mcpaired(qcol1, qcol2):
     keys1 = sorted(choices1.keys(), key=int)
     for i in keys1:
         names1 += [choices1[i]['choiceText']]
-    if len(names1) == len(keys1)-1:
-        names1 += ['Other']
-    labels1=[textwrap.fill(text,15) for text in names1]
     names2 = []
     keys2 = sorted(choices2.keys(), key=int)
     for i in keys2:
         names2 += [choices2[i]['choiceText']]
-    if len(names2) == len(keys2)-1:
-        names2 += ['Other']
-    labels2=[textwrap.fill(text,10) for text in names2]
-    return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2, "labels1":labels1,"labels2":labels2}
+    return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2}
 
-def scatter_mc(qcol1, qcol2, c=None, title=None, xlabel=None, ylabel=None, dp=15):
-    data = mcpaired(qcol1, qcol2)
+def mcmatrix(qcol, exclude_choice=[]):
+    qcols = {}
+    for i in survey['exportColumnMap'].keys():
+        if i.startswith(qcol+"_"):
+            if i.endswith("_TEXT"):
+                continue
+            try:
+                qcols[i] = survey['exportColumnMap'][i]['subQuestion'].split(".")
+            except KeyError:
+                raise RuntimeError("{0} is not a multiple choice matrix question\n".format(qcol))
+    qn = sorted(qcols.keys(), key=lambda k: int(qcols[k][2]))
+    qid = survey['exportColumnMap'][qn[0]]['question']
+    question = survey['questions'][qid]
+    if question['questionType']['type'] != "Matrix" and question['questionType']['subSelector'] != "SingleAnswer":
+        raise RuntimeError("{0} is not a multiple choice matrix question\n".format(qcol))
+        return None
+    choices = question['choices']
+    sub_questions = question['subQuestions']
+    pairs = []
+    for i in qn:
+        data = mc2list(i)
+        bars = data['bars']
+        for j in range(len(bars)):
+            pairs.append([j+1, int(qcols[i][2]), bars[j]])
+    for e in exclude_choice:
+        echoice = None
+        for c in choices:
+            cd = choices[c]['description']
+            if cd == e:
+                echoice = int(c)
+                break
+        if not echoice:
+            raise RuntimeError("Choice {0} could not be excluded because it doesn't exist...".format(e))
+        raise NotImplementedError("TODO")
+    names1 = []
+    keys1 = sorted(choices.keys(), key=int)
+    for i in keys1:
+        names1 += [choices[i]['description']]
+    names2 = []
+    keys2 = sorted(sub_questions.keys(), key=int)
+    for i in keys2:
+        names2 += [sub_questions[i]['description']]
+    return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2}
+
+def scatter_mc(data, c=None, dp=15, title=None, xlabel=None, ylabel=None,
+    xlabel_length=15, xlabel_clip=-1, ylabel_length=15, ylabel_clip=-1, xtick_rotation=-45, xtick_labels=None, ytick_labels=None):
     freqs = []
     pairs = []
     for p in data['pairs']:
@@ -249,11 +295,14 @@ def scatter_mc(qcol1, qcol2, c=None, title=None, xlabel=None, ylabel=None, dp=15
         for i in range(len(freqs)):
             if pairs[i][0] == p[0] and pairs[i][1] == p[1]:
                 found = True
-                freqs[i] += 1
+                freqs[i] += p[2]
                 break
         if not found:
-            pairs += [p]
-            freqs += [1]
+            pairs.append((p[0],p[1]))
+            if len(p) > 2:
+                freqs.append(p[2])
+            else:
+                freqs.append(1)
     x,y = zip(*pairs)
     area = np.pi * (dp * np.array(freqs))**2
     fig, ax = plt.subplots()
@@ -263,8 +312,20 @@ def scatter_mc(qcol1, qcol2, c=None, title=None, xlabel=None, ylabel=None, dp=15
     ax.set_yticks(yt)
     ax.set_xbound(lower=xt[0]-0.5, upper=xt[-1]+0.5)
     ax.set_ybound(lower=yt[0]-0.5, upper=yt[-1]+0.5)
-    ax.set_xticklabels(data["labels1"])
-    ax.set_yticklabels(data["labels2"])
+    if xtick_labels:
+        names1 = xtick_labels
+    else:
+        names1 = data['names1']
+    labels1_clipped = [label_clipper(text,xlabel_clip) for text in names1]
+    labels1 = [textwrap.fill(text,xlabel_length) for text in labels1_clipped]
+    if ytick_labels:
+        names2 = ytick_labels
+    else:
+        names2 = data['names2']
+    labels2_clipped = [label_clipper(text,ylabel_clip) for text in names2]
+    labels2 = [textwrap.fill(text,ylabel_length) for text in labels2_clipped]
+    ax.set_xticklabels(labels1)
+    ax.set_yticklabels(labels2)
     ax.autoscale(enable=False, axis="both", tight=True)
     if xlabel:
         ax.set_xlabel(xlabel)
@@ -273,6 +334,10 @@ def scatter_mc(qcol1, qcol2, c=None, title=None, xlabel=None, ylabel=None, dp=15
         plt.subplots_adjust(left=0.15)
     if title:
         ax.set_title(title)
+    xy = list(zip(x,y))
+    for l in range(len(xy)):
+        if freqs[l] > 0:
+            plt.annotate(freqs[l], xy = xy[l], xytext = (-4, -4), textcoords = 'offset points')
     plt.scatter(x, y, c=c, s=area, alpha=0.5)
     plt.show(block=False)
 
