@@ -3,6 +3,8 @@ import json
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import matplotlib.colors as mpl_colors
+import matplotlib.cm as mpl_cm
 import pandas
 from pprint import pprint
 import sys
@@ -17,7 +19,9 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-R", "--results", help="Sets the results file without re-downloading the results from Qualtrics", default=None)
 args = parser.parse_args()
 
+sys.stdout.write("Loading survey from Qualtrics...")
 survey = q.survey_get(settings.qualtrics_survey)
+sys.stdout.write("done!\n")
 if args.results:
     survey_file = args.results
     sys.stdout.write("Reusing results from {0}\n".format(survey_file))
@@ -29,7 +33,7 @@ with open(survey_file) as data_file:
     survey_data = json.load(data_file)
 
 N = len(survey_data['responses'])
-print("Imported {0} responses".format(N))
+sys.stdout.write("Imported {0} responses\n".format(N))
 
 sys.stdout.write("Survey Name: {0}\n".format(survey['name']))
 
@@ -51,16 +55,16 @@ def mc2list(qcol):
         rdata_raw[i] = 0
     for i in survey_data['responses']:
         ans = i[qcol]
-        #print(ans)
-        rdata_raw[ans] += 1
+        if ans == "":
+            pass # Throw out questions they didn't answer
+        else:
+            rdata_raw[ans] += 1
     #rdata = {}
     #for i in choices.keys():
     #   rdata[choices[i]['choiceText']] = rdata_raw[i]
     bars = []
     names = []
-    kl = list(rdata_raw.keys())
-    kl.sort(key=int)
-    keys = kl
+    keys = sorted(rdata_raw.keys(), keys=int)
     for i in keys:
         bars += [rdata_raw[i]]
         names += [choices[i]['choiceText']]
@@ -89,9 +93,7 @@ def ma2list(qcol): #Compiles the raw respondants from a multiple-choice-multiple
     for i in survey_data['responses']:
         for j in i:
             if j in qn:
-                #print(j)
                 ans = i[j]
-                #print(ans)
                 if (ans):
                     rdata_raw[j] += 1
     bars = []
@@ -102,29 +104,63 @@ def ma2list(qcol): #Compiles the raw respondants from a multiple-choice-multiple
         c = qcols[i][2]
         names.append(choices[c]['choiceText'])
         keys.append(c)
-    labels_clipped = [label_clipper(text,label_clip) for text in names]
-    labels = [textwrap.fill(text,label_length) for text in labels_clipped]
-    return {"keys":keys, "bars":bars, "names":names, "labels":labels}
+    return {"keys":keys, "bars":bars, "names":names}
+
+def list_combine(*lists):
+    if len(lists) < 1:
+        raise RuntimeError("Input lists must include at least one list")
+    bar_len = len(lists[0]['bars'])
+    for i in range(1,len(lists)):
+        if bar_len != len(lists[i]['bars']):
+            raise RuntimeError("Input lists must be the same internal length of the 'bars' dictionary item")
+    ret = lists[0]
+    rb = lists[0]['bars']
+    for i in range(1,len(lists)):
+        tl = lists[i]['bars']
+        for j in range(len(rb)):
+            rb[j] += tl[j]
+    ret['bars'] = rb
+    return ret
 
 def label_clipper(label, clip): # set clip to negative to bypass this code
     if len(label) > clip and clip > 0:
         label = label[:clip] + "..."
     return label
 
-def plot_mc(data, label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, xtick_rotation=-45, xtick_labels=None, bar_width=0.4, color='g', alpha=0.5):
+def plot_mc(data, legend=[], label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, xtick_rotation=-45, xtick_labels=None, group_width=0.7, color=None, alpha=0.5):
     # data should be of format: {'keys': ['1', '2', '3', '4', '5'], 'names': ['One', 'Two', 'Three', 'Four', 'Five'], 'bars': [5, 13, 1, 1, 0]}
     # based on: http://matplotlib.org/examples/api/barchart_demo.html
-    pN = len(data["bars"])
-    xt = np.arange(pN)  # the x locations for the groups
-
     fig, ax = plt.subplots()
-    rects1 = ax.bar(xt, data["bars"], bar_width, color=color, alpha=alpha)
+    if type(data) is tuple or type(data) is list:
+        pass
+    else:
+        data = [data]
+    pN = len(data[0]["bars"])
+    dlen = len(data)
+    bar_width = group_width/dlen
+    xt = np.arange(pN)  # the x locations for the groups
+    if color:
+        if type(color) is tuple or type(color) is list:
+            if len(color) < dlen:
+                raise RuntimeError("If you specify a list of colors, the length must match the number of series in data")
+        elif type(color) is str:
+            cmap = color
+            color = mp_get_cmap(dlen, cmap=cmap)
+        else:
+            color = [color]*dlen # kluge but it works...
+    else:
+        color = mp_get_cmap(dlen)
+    rects = []
+    for i in range(len(data)):
+        rects.append(ax.bar(xt+bar_width*i, data[i]["bars"], bar_width, color=color(i), alpha=alpha))
+
     if xtick_labels:
         names = xtick_labels
     else:
-        names = data["labels"]
+        names = data[0]["names"]
     labels_clipped = [label_clipper(text,label_clip) for text in names]
     labels = [textwrap.fill(text,label_length) for text in labels_clipped]
+
 
     # add some text for labels, title and axes ticks
     if xlabel:
@@ -133,19 +169,39 @@ def plot_mc(data, label_length=15, label_clip=-1, title=None, xlabel=None, ylabe
         ax.set_ylabel(ylabel)
     if title:
         ax.set_title(title, fontsize="xx-large", y=1.04)
-    ax.set_xticks(xt + bar_width/2)
-    ax.set_xbound(lower=xt[0]+bar_width/2-0.5, upper=xt[-1]+bar_width/2+0.5)
-    mb = max(data['bars'])
+    ax.set_xticks(xt + group_width/2)
+    ax.set_xbound(lower=xt[0]+group_width/2-0.5, upper=xt[-1]+group_width/2+0.5)
+    mb = None
+    for i in data:
+        lm = max(i['bars'])
+        if mb is None:
+            mb = lm
+        elif lm > mb:
+            mb = lm
     ax.set_ybound(upper=mb*1.07)
     ax.set_xticklabels(labels, rotation=xtick_rotation)
     ax.autoscale(enable=False, axis="x", tight=True)
     bot_off = (-np.sin(np.radians(xtick_rotation))) * (label_length * 0.016)
-    fig.subplots_adjust(bottom=bot_off)
+    fig.subplots_adjust(left=0.05, bottom=bot_off)
 
-    #ax.legend((rects1[0], rects2[0]), ('Men', 'Women'))
+    if dlen > 1:
+        lr = []
+        for i in rects:
+            lr.append(i[0])
+        llen = len(legend)
+        if llen < dlen:
+            for i in range(llen-1, dlen):
+                legend.append("Series {0}".format(i+1))
+        lmax = 0
+        for i in legend:
+            li = len(i)
+            if li > lmax:
+                lmax = li
+        ax.legend(lr, legend, bbox_to_anchor=(1,1), bbox_transform=fig.transFigure)
+        fig.subplots_adjust(right=1-(0.016*li+0.05))
     
-    mp_autolabel(rects1, ax)
-    #autolabel(rects2)
+    for i in rects:
+        mp_autolabel(i, ax)
 
     plt.show(block=False)
     return (fig, ax)
@@ -155,11 +211,11 @@ def mcpaired(qcol1, qcol2):
     qid2 = survey['exportColumnMap'][qcol2]['question']
     question1 = survey['questions'][qid1]
     question2 = survey['questions'][qid2]
-    if question1['questionType']['type'] != "MC":
-        sys.stderr.write("{0} is not a multiple choice question\n".format(qcol1))
+    if question1['questionType']['type'] != "MC" and question['questionType']['selector'] != "SAVR":
+        sys.stderr.write("{0} is not a multiple choice, single-answer question\n".format(qcol1))
         return None
-    if question2['questionType']['type'] != "MC":
-        sys.stderr.write("{0} is not a multiple choice question\n".format(qcol2))
+    if question2['questionType']['type'] != "MC" and question['questionType']['selector'] != "SAVR":
+        sys.stderr.write("{0} is not a multiple choice, single-answer question\n".format(qcol2))
         return None
     choices1 = question1['choices']
     choices2 = question2['choices']
@@ -169,18 +225,14 @@ def mcpaired(qcol1, qcol2):
         ans2 = i[qcol2]
         pairs += [(ans1, ans2)]
     names1 = []
-    kl1 = list(choices1.keys())
-    kl1.sort(key=int)
-    keys1 = kl1
+    keys1 = sorted(choices1.keys(), key=int)
     for i in keys1:
         names1 += [choices1[i]['choiceText']]
     if len(names1) == len(keys1)-1:
         names1 += ['Other']
     labels1=[textwrap.fill(text,15) for text in names1]
     names2 = []
-    kl2 = list(choices2.keys())
-    kl2.sort(key=int)
-    keys2 = kl2
+    keys2 = sorted(choices2.keys(), key=int)
     for i in keys2:
         names2 += [choices2[i]['choiceText']]
     if len(names2) == len(keys2)-1:
@@ -233,6 +285,15 @@ def mp_autolabel(rects, ax):
         ax.text(rect.get_x() + rect.get_width()/2., 1.01*height,
                 '%d' % int(height),
                 ha='center', va='bottom')
+
+def mp_get_cmap(N, cmap='hsv'): # from http://stackoverflow.com/a/25628397/1778122
+    '''Returns a function that maps each index in 0, 1, ... N-1 to a distinct 
+    RGB color.'''
+    color_norm  = mpl_colors.Normalize(vmin=0, vmax=N-1)
+    scalar_map = mpl_cm.ScalarMappable(norm=color_norm, cmap=cmap) 
+    def map_index_to_rgb_color(index):
+        return scalar_map.to_rgba(index)
+    return map_index_to_rgb_color
 
 def nars(nars_list): #maybe reimplement using pandas?
     nars_score = []
