@@ -287,7 +287,7 @@ def mcmatrix(qcol, exclude_choice=[]):
     return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2}
 
 def scatter_mc(data, c=None, dp=15, title=None, xlabel=None, ylabel=None,
-    xlabel_length=15, xlabel_clip=-1, ylabel_length=15, ylabel_clip=-1, xtick_rotation=-45, xtick_labels=None, ytick_labels=None):
+    xlabel_length=15, xlabel_clip=-1, ylabel_length=10, ylabel_clip=-1, xtick_rotation=-45, xtick_labels=None, ytick_labels=None):
     freqs = []
     pairs = []
     for p in data['pairs']:
@@ -295,7 +295,10 @@ def scatter_mc(data, c=None, dp=15, title=None, xlabel=None, ylabel=None,
         for i in range(len(freqs)):
             if pairs[i][0] == p[0] and pairs[i][1] == p[1]:
                 found = True
-                freqs[i] += p[2]
+                if len(p) > 2:
+                    freqs[i] += p[2]
+                else:
+                    freqs[i] += 1
                 break
         if not found:
             pairs.append((p[0],p[1]))
