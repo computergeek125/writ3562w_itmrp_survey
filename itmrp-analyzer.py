@@ -363,7 +363,7 @@ def mp_get_cmap(N, cmap='hsv'): # from http://stackoverflow.com/a/25628397/17781
         return scalar_map.to_rgba(index)
     return map_index_to_rgb_color
 
-def nars(nars_list): #maybe reimplement using pandas?
+def nars(nars_list, inverted=False, inversion_base=5): #maybe reimplement using pandas?
     nars_score = []
     for respondant in survey_data['responses']:
         r_vals = []
@@ -374,7 +374,11 @@ def nars(nars_list): #maybe reimplement using pandas?
             if ans == "":
                 pass # Throw out questions they didn't answer
             else:
-                r_vals.append(int(ans))
+                s = int(ans)
+                if inverted:
+                    r_vals.append(likert_invert(s, inversion_base))
+                else:
+                    r_vals.append(s)
         #sys.stdout.write('\n')
         if r_vals:
             r_mean = np.nanmean(r_vals, dtype=np.float64)
@@ -384,27 +388,7 @@ def nars(nars_list): #maybe reimplement using pandas?
             r_std = np.NaN
         nars_score.append({"ResponseID":respondant['ResponseID'], "mean":r_mean, "std":r_std })
     return nars_score
-def nars_inverted(nars_list): # This may or may not work...
-    nars_score = []
-    for respondant in survey_data['responses']:
-        r_vals = []
-        #sys.stdout.write("{0}: ".format(respondant['ResponseID']))
-        for sq in nars_list:
-            ans = respondant[sq]
-            #sys.stdout.write("'{0}' ".format(ans))
-            if ans == "":
-                pass # Throw out questions they didn't answer
-            else:
-                r_vals.append(likert_invert(int(ans)))
-        #sys.stdout.write('\n')
-        if r_vals:
-            r_mean = np.nanmean(r_vals, dtype=np.float64)
-            r_std = np.nanstd(r_vals, dtype=np.float64)
-        else:
-            r_mean = np.NaN
-            r_std = np.NaN
-        nars_score.append({"ResponseID":respondant['ResponseID'], "mean":r_mean, "std":r_std })
-    return nars_score
+
 def likert_invert(input_num, scale):
     if (scale % 2 == 0):
         raise ValueError("Likert scales must be odd numbers!  You provided a scale of {0}".format(scale))
