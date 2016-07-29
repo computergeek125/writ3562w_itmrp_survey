@@ -101,40 +101,19 @@ def ma2list(qcol): #Compiles the raw respondants from a multiple-choice-multiple
         raise RuntimeError("{0} is not a multiple choice-multiple answer question\n".format(qcol))
         return None
     choices = question['choices']
-    rdata_raw = {}
-    for i in qn:
-        rdata_raw[i] = 0
+    data = pd.Series([0]*len(qn), index=qn, dtype=int)
     for i in survey_data['responses']:
         for j in i:
             if j in qn:
                 ans = i[j]
                 if (ans):
-                    rdata_raw[j] += 1
-    bars = []
+                    data[j] += 1
     names = []
-    keys = []
     for i in qn:
-        bars.append(rdata_raw[i])
         c = qcols[i][2]
         names.append(choices[c]['choiceText'])
-        keys.append(c)
-    return {"keys":keys, "bars":bars, "names":names}
-
-def list_combine(*lists):
-    if len(lists) < 1:
-        raise RuntimeError("Input lists must include at least one list")
-    bar_len = len(lists[0]['bars'])
-    for i in range(1,len(lists)):
-        if bar_len != len(lists[i]['bars']):
-            raise RuntimeError("Input lists must be the same internal length of the 'bars' dictionary item")
-    ret = lists[0]
-    rb = lists[0]['bars']
-    for i in range(1,len(lists)):
-        tl = lists[i]['bars']
-        for j in range(len(rb)):
-            rb[j] += tl[j]
-    ret['bars'] = rb
-    return ret
+    data.index = names
+    return data
 
 def mcpaired(qcol1, qcol2):
     qid1 = survey['exportColumnMap'][qcol1]['question']
