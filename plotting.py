@@ -6,17 +6,14 @@ import textwrap
 
 import plotting_util as u
 
-# Init Matplotlib
-mpl.rcParams['backend'] = "TkAgg"
-
-def barchart(data, legend=[], label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, 
-    xtick_rotation=-45, xtick_labels=None, group_width=0.7, color=None, alpha=0.5):
+def barchart(data, error=None, legend=[], label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, 
+    xtick_rotation=-45, xtick_labels=None, ybound=None, group_width=0.7, color=None, alpha=0.5):
     # data should be a list of lists: each sub-list is a series in the data, and each item in the sublists is a bar
     # based on: http://matplotlib.org/examples/api/barchart_demo.html
     fig, ax = plt.subplots()
     try:
         a = data[0][0]
-    except TypeError:
+    except (TypeError, IndexError):
         data = [data]
     pN = len(data[0])
     dlen = len(data)
@@ -35,7 +32,10 @@ def barchart(data, legend=[], label_length=15, label_clip=-1, title=None, xlabel
         color = u.mp_get_cmap(dlen)
     rects = []
     for i in range(len(data)):
-        rects.append(ax.bar(xt+bar_width*i, data[i], bar_width, color=color(i), alpha=alpha))
+        if error:
+            rects.append(ax.bar(xt+bar_width*i, data[i], bar_width, color=color(i), alpha=alpha, yerr=error[i]))
+        else:
+            rects.append(ax.bar(xt+bar_width*i, data[i], bar_width, color=color(i), alpha=alpha))
 
     # add some text for labels, title and axes ticks
     if xlabel:
@@ -53,7 +53,10 @@ def barchart(data, legend=[], label_length=15, label_clip=-1, title=None, xlabel
         elif lm > mb:
             mb = lm
     ax.set_xbound(lower=xt[0]+group_width/2-0.5, upper=xt[-1]+group_width/2+0.5)
-    ax.set_ybound(upper=mb*1.07)
+    if ybound:
+        ax.set_ybound(lower=ybound[0], upper=ybound[1]*1.07)
+    else:
+        ax.set_ybound(upper=mb*1.07)
     ax.set_xticks(xt + group_width/2)
     ax.autoscale(enable=False, axis="x", tight=True)
 
