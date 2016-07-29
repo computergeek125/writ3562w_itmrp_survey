@@ -12,8 +12,12 @@ def mp_autolabel(rects, ax):
     # attach some text labels
     for rect in rects:
         height = rect.get_height()
+        if type(height) is int:
+        	fs = '{0}'
+        else:
+        	fs = "{0:.2f}"
         ax.text(rect.get_x() + rect.get_width()/2., 1.01*height,
-                '%d' % int(height),
+                fs.format(height),
                 ha='center', va='bottom')
 
 def mp_get_cmap(N, cmap='hsv'): # from http://stackoverflow.com/a/25628397/1778122
