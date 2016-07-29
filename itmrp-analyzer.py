@@ -9,7 +9,8 @@ import sys
 import textwrap
 
 from qualtrics_api.Qv3 import Qualtrics_v3 as Q
-import plotting as p
+import oldplotting as op
+import pdplot as p
 import settings
 
 q = Q(settings.qualtrics_datacenter,settings.qualtrics_api_key)
