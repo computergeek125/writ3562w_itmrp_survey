@@ -6,6 +6,8 @@ import textwrap
 
 import plotting_util as u
 
+sys.stderr.write("Oldplotting was depricated in favor of the new Pandas interface.  Please use the new interface instead")
+
 def barchart(data, error=None, legend=[], label_length=15, label_clip=-1, title=None, xlabel=None, ylabel=None, 
     xtick_rotation=-45, xtick_labels=None, ybound=None, group_width=0.7, color=None, alpha=0.5):
     # data should be a list of lists: each sub-list is a series in the data, and each item in the sublists is a bar
