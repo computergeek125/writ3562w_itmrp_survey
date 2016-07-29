@@ -10,4 +10,4 @@ def pdplot(pddata, kind='bar', xlabel=None, ylabel=None, title=None, **kwargs):
         ax.set_ylabel(ylabel)
     if title:
         ax.set_title(title, fontsize="xx-large", y=1.04)
-
+    return ax
