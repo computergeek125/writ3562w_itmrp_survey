@@ -1,5 +1,7 @@
 import argparse
 import json
+import matplotlib
+from matplotlib import rcParams as mp_rc
 import numpy as np
 import pandas as pd
 from pprint import pprint
@@ -34,6 +36,21 @@ sys.stdout.write("Imported {0} responses\n".format(N))
 
 sys.stdout.write("Survey Name: {0}\n".format(survey['name']))
 
+sys.stderr.write("\n")
+try:
+    __IPYTHON__
+    sys.stderr.write("Type '%pylab' (without the quotes) to initialize IPython\n")
+except NameError:
+    sys.stderr.write("Warning: This script was designed for IPython.  Running without IPython may yield unexpected results.\n")
+
+matplotlib.style.use('ggplot')
+mp_rc.update({'figure.autolayout': True})
+
+def new2old(pdata): 
+    # Creates old-style dictionary returns from Pandas data structures
+    # Ignores keys because it's not used
+    return {"bars":pdata.tolist(), "names":copy(pdata.index)}
+
 def mc2list(qcol):
     try:
         qid = survey['exportColumnMap'][qcol]['question']
@@ -41,35 +58,30 @@ def mc2list(qcol):
     except KeyError:
         raise RuntimeError("{0} is not a multiple choice, single-answer question\n".format(qcol))
     if question['questionType']['type'] == "MC" and question['questionType']['selector'] == "SAVR":
-        pass
+        matrix=False
     elif question['questionType']['type'] == "Matrix" and question['questionType']['subSelector'] == "SingleAnswer":
         matrix=True
     else:
         raise RuntimeError("{0} is not a multiple choice, single-answer type question\n".format(qcol))
         return None
     choices = question['choices']
-    rdata_raw = {}
-    for i in choices.keys():
-        rdata_raw[i] = 0
+    ck = sorted(choices.keys(), key=int)
+    data = pd.Series([0]*len(ck), index=ck, dtype=int)
     for i in survey_data['responses']:
         ans = i[qcol]
         if ans == "":
             pass # Throw out questions they didn't answer
         else:
-            rdata_raw[ans] += 1
-    #rdata = {}
-    #for i in choices.keys():
-    #   rdata[choices[i]['choiceText']] = rdata_raw[i]
-    bars = []
+            data[ans] += 1
     names = []
-    keys = sorted(rdata_raw.keys(), key=int)
+    keys = data.index
     for i in keys:
-        bars += [rdata_raw[i]]
         if not matrix:
             names.append(choices[i]['choiceText'])
         else:
             names.append(choices[i]['description'])
-    return {"keys":keys, "bars":bars, "names":names}
+    data.index = names
+    return data
 
 def ma2list(qcol): #Compiles the raw respondants from a multiple-choice-multiple-answer question
     qcols = {}
@@ -198,7 +210,7 @@ def mcmatrix(qcol, exclude_choice=[]):
 #TODO: Text analysis (report) Grab text with selectable metadata, filtering null answers
 
 def nars(nars_list, inverted=False, inversion_base=5): #maybe reimplement using pandas?
-    nars_score = []
+    nars_score = {}
     for respondant in survey_data['responses']:
         r_vals = []
         #sys.stdout.write("{0}: ".format(respondant['ResponseID']))
@@ -220,8 +232,39 @@ def nars(nars_list, inverted=False, inversion_base=5): #maybe reimplement using 
         else:
             r_mean = np.NaN
             r_std = np.NaN
-        nars_score.append({"ResponseID":respondant['ResponseID'], "mean":r_mean, "std":r_std })
+        nars_score[respondant['ResponseID']] = {"mean":r_mean, "std":r_std }
     return nars_score
+
+def nars_mean(nars_s):
+    nm = []
+    for i in nars_s.values():
+        if not np.isnan(i['mean']):
+            nm.append(i['mean'])
+    return {'mean':np.nanmean(nm), 'std':np.nanstd(nm)}
+
+def nars_associate(nars_s1, nars_s2, nars_s3, questions):
+    resp = nars_s1.keys()
+    data = {"questions":questions, "data":{}}
+    for i in survey_data['responses']:
+        rid = i['ResponseID']
+        if rid in resp:
+            dr = {}
+            dr['nars_s1'] = nars_s1[rid]
+            dr['nars_s2'] = nars_s2[rid]
+            dr['nars_s3'] = nars_s3[rid]
+            for j in questions:
+                dr[j] = i[j]
+            data['data'][rid] = dr
+    return data
+def print_na(nars_associated):
+    print(nars_associated['questions'])
+    for x in nars_associated['data'].keys():
+        i = nars_associated['data'][x]
+        sys.stdout.write("{0}\t{1:.2f}\t{2:.2f}\t{3:.2f}\t".format(x, i['nars_s1']['mean'], i['nars_s2']['mean'], i['nars_s3']['mean']))
+        for y in nars_associated['questions']:
+            sys.stdout.write("{0}\t".format(i[y]))
+        sys.stdout.write("\n")
+
 
 def likert_invert(input_num, scale):
     if (scale % 2 == 0):
@@ -230,5 +273,6 @@ def likert_invert(input_num, scale):
         raise ValueError("Likert scale input must be between 1 and {0} inclusive".format(scale))
     return scale - input_num +1
 def print_nars(nars_processed):
-    for i in nars_processed:
+    for x in nars_processed.keys():
+        i = nars_processed[x]
         sys.stdout.write("{0}: m={1} s={2}\n".format(i['ResponseID'], i['mean'], i['std']))
