@@ -128,11 +128,10 @@ def mcpaired(qcol1, qcol2):
         return None
     choices1 = question1['choices']
     choices2 = question2['choices']
-    pairs = []
-    for i in survey_data['responses']:
-        ans1 = i[qcol1]
-        ans2 = i[qcol2]
-        pairs += [(ans1, ans2)]
+    data = pd.DataFrame({qcol1:[None]*N, qcol2:[None]*N})
+    for i,j in zip(survey_data['responses'], range(N)):
+        data[qcol1][j] = i[qcol1]
+        data[qcol2][j] = i[qcol2]
     names1 = []
     keys1 = sorted(choices1.keys(), key=int)
     for i in keys1:
@@ -141,7 +140,7 @@ def mcpaired(qcol1, qcol2):
     keys2 = sorted(choices2.keys(), key=int)
     for i in keys2:
         names2 += [choices2[i]['choiceText']]
-    return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2}
+    return {"pairs":data, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2}
 
 def mcmatrix(qcol, exclude_choice=[]):
     qcols = {}
@@ -188,39 +187,33 @@ def mcmatrix(qcol, exclude_choice=[]):
     return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2}
 
 #TODO: Text analysis (report) Grab text with selectable metadata, filtering null answers
-
-def nars(nars_list, inverted=False, inversion_base=5): #maybe reimplement using pandas?
-    nars_score = {}
-    for respondant in survey_data['responses']:
-        r_vals = []
-        #sys.stdout.write("{0}: ".format(respondant['ResponseID']))
+def nars_raw(nars_list, inverted=False, inversion_base=5):
+    template = {}
+    for i in nars_list:
+        template[i] = pd.Series([np.NaN]*N, dtype=np.float64)
+    rawdata = pd.DataFrame(template)
+    rids = []
+    for respondant,i in zip(survey_data['responses'], range(N)):
         for sq in nars_list:
             ans = respondant[sq]
-            #sys.stdout.write("'{0}' ".format(ans))
             if ans == "":
                 pass # Throw out questions they didn't answer
             else:
                 s = int(ans)
                 if inverted:
-                    r_vals.append(likert_invert(s, inversion_base))
+                    rawdata[sq] = likert_invert(s, inversion_base)
                 else:
-                    r_vals.append(s)
-        #sys.stdout.write('\n')
-        if r_vals:
-            r_mean = np.nanmean(r_vals, dtype=np.float64)
-            r_std = np.nanstd(r_vals, dtype=np.float64)
-        else:
-            r_mean = np.NaN
-            r_std = np.NaN
-        nars_score[respondant['ResponseID']] = {"mean":r_mean, "std":r_std }
+                    rawdata[sq][i] = s
+        rids.append(respondant['ResponseID'])
+    if len(nars_list) < 1:
+        rawdata = pd.DataFrame(index=rids)
+    else:
+        rawdata.index = rids
+    return rawdata
+def nars(nars_list, inverted=False, inversion_base=5):
+    rawdata = nars_raw(nars_list, inverted=inverted, inversion_base=inversion_base)
+    nars_score = pd.DataFrame({'mean':rawdata.mean(1), 'std':rawdata.std(1)})
     return nars_score
-
-def nars_mean(nars_s):
-    nm = []
-    for i in nars_s.values():
-        if not np.isnan(i['mean']):
-            nm.append(i['mean'])
-    return {'mean':np.nanmean(nm), 'std':np.nanstd(nm)}
 
 def nars_associate(nars_s1, nars_s2, nars_s3, questions):
     resp = nars_s1.keys()
