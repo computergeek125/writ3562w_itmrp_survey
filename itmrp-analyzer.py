@@ -216,18 +216,18 @@ def nars(nars_list, inverted=False, inversion_base=5):
     return nars_score
 
 def nars_associate(nars_s1, nars_s2, nars_s3, questions):
-    resp = nars_s1.keys()
-    data = {"questions":questions, "data":{}}
+    resp = nars_s1.index
+    template = {"nars_s1_mean":nars_s1['mean'], "nars_s1_std":nars_s1['std'], 
+                "nars_s2_mean":nars_s2['mean'], "nars_s2_std":nars_s2['std'], 
+                "nars_s3_mean":nars_s3['mean'], "nars_s3_std":nars_s3['std']}
+    for i in questions:
+        template[i] = pd.Series()
+    data = pd.DataFrame(template)
     for i in survey_data['responses']:
         rid = i['ResponseID']
         if rid in resp:
-            dr = {}
-            dr['nars_s1'] = nars_s1[rid]
-            dr['nars_s2'] = nars_s2[rid]
-            dr['nars_s3'] = nars_s3[rid]
             for j in questions:
-                dr[j] = i[j]
-            data['data'][rid] = dr
+                data.loc[rid][j]  = i[j]
     return data
 def print_na(nars_associated):
     print(nars_associated['questions'])
