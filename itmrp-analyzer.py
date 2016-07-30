@@ -3,6 +3,7 @@ import json
 import matplotlib
 from matplotlib import rcParams as mp_rc
 import numpy as np
+import os
 import pandas as pd
 from pprint import pprint
 import sys
@@ -46,6 +47,7 @@ except NameError:
 
 matplotlib.style.use('ggplot')
 mp_rc.update({'figure.autolayout': True})
+reload_window()
 
 def new2old(pdata): 
     # Creates old-style dictionary returns from Pandas data structures
@@ -245,7 +247,13 @@ def likert_invert(input_num, scale):
     if (input_num < 1 or input_num > scale):
         raise ValueError("Likert scale input must be between 1 and {0} inclusive".format(scale))
     return scale - input_num +1
+
 def print_nars(nars_processed):
     for x in nars_processed.keys():
         i = nars_processed[x]
         sys.stdout.write("{0}: m={1} s={2}\n".format(i['ResponseID'], i['mean'], i['std']))
+
+def reload_window():
+    rows, cols = os.popen('stty size', 'r').read().split()
+    pd.set_option('display.width',rows)
+    pd.set_option('display.height',cols)
