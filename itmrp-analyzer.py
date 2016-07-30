@@ -3,7 +3,6 @@ import json
 import matplotlib
 from matplotlib import rcParams as mp_rc
 import numpy as np
-import os
 import pandas as pd
 from pprint import pprint
 import sys
@@ -13,6 +12,9 @@ from qualtrics_api.Qv3 import Qualtrics_v3 as Q
 import oldplotting as op
 import pdplot as p
 import settings
+import util as u
+
+import run_graphs
 
 q = Q(settings.qualtrics_datacenter,settings.qualtrics_api_key)
 
@@ -47,7 +49,7 @@ except NameError:
 
 matplotlib.style.use('ggplot')
 mp_rc.update({'figure.autolayout': True})
-reload_window()
+u.reload_window()
 
 def new2old(pdata): 
     # Creates old-style dictionary returns from Pandas data structures
@@ -60,7 +62,7 @@ def mc2list(qcol):
         question = survey['questions'][qid]
     except KeyError:
         raise RuntimeError("{0} is not a multiple choice, single-answer question\n".format(qcol))
-    if question['questionType']['type'] == "MC" and question['questionType']['selector'] == "SAVR":
+    if question['questionType']['type'] == "MC" and (question['questionType']['selector'] == "SAVR" or question['questionType']['selector'] == "SAHR"):
         matrix=False
     elif question['questionType']['type'] == "Matrix" and question['questionType']['subSelector'] == "SingleAnswer":
         matrix=True
@@ -69,7 +71,7 @@ def mc2list(qcol):
         return None
     choices = question['choices']
     ck = sorted(choices.keys(), key=int)
-    data = pd.Series([0]*len(ck), index=ck, dtype=int)
+    data = pd.Series([0]*len(ck), name=qcol, index=ck, dtype=int)
     for i in survey_data['responses']:
         ans = i[qcol]
         if ans == "":
@@ -103,7 +105,7 @@ def ma2list(qcol): #Compiles the raw respondants from a multiple-choice-multiple
         raise RuntimeError("{0} is not a multiple choice-multiple answer question\n".format(qcol))
         return None
     choices = question['choices']
-    data = pd.Series([0]*len(qn), index=qn, dtype=int)
+    data = pd.Series([0]*len(qn), name=qcol, index=qn, dtype=int)
     for i in survey_data['responses']:
         for j in i:
             if j in qn:
@@ -116,6 +118,11 @@ def ma2list(qcol): #Compiles the raw respondants from a multiple-choice-multiple
         names.append(choices[c]['choiceText'])
     data.index = names
     return data
+
+def list_grouper(*args):
+    r = pd.DataFrame([*args])
+    r = r.transpose()
+    return r
 
 def mcpaired(qcol1, qcol2):
     qid1 = survey['exportColumnMap'][qcol1]['question']
@@ -231,15 +238,13 @@ def nars_associate(nars_s1, nars_s2, nars_s3, questions):
             for j in questions:
                 data.loc[rid][j]  = i[j]
     return data
-def print_na(nars_associated):
-    print(nars_associated['questions'])
-    for x in nars_associated['data'].keys():
-        i = nars_associated['data'][x]
-        sys.stdout.write("{0}\t{1:.2f}\t{2:.2f}\t{3:.2f}\t".format(x, i['nars_s1']['mean'], i['nars_s2']['mean'], i['nars_s3']['mean']))
-        for y in nars_associated['questions']:
-            sys.stdout.write("{0}\t".format(i[y]))
-        sys.stdout.write("\n")
 
+def nars_dropNaN(nars_assoc):
+    newdata = nars_assoc.copy()
+    newdata = newdata[np.isfinite(newdata['nars_s1_mean'])]
+    newdata = newdata[np.isfinite(newdata['nars_s2_mean'])]
+    newdata = newdata[np.isfinite(newdata['nars_s3_mean'])]
+    return newdata
 
 def likert_invert(input_num, scale):
     if (scale % 2 == 0):
@@ -253,7 +258,5 @@ def print_nars(nars_processed):
         i = nars_processed[x]
         sys.stdout.write("{0}: m={1} s={2}\n".format(i['ResponseID'], i['mean'], i['std']))
 
-def reload_window():
-    rows, cols = os.popen('stty size', 'r').read().split()
-    pd.set_option('display.width',rows)
-    pd.set_option('display.height',cols)
+def rg(graph=None):
+    run_graphs.run_graphs(graph=graph, p=p, mc2list=mc2list, ma2list=ma2list, list_grouper=list_grouper)
