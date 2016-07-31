@@ -185,4 +185,4 @@ def mcmatrix(qcol):
 #TODO: Text analysis (report) Grab text with selectable metadata, filtering null answers
 
 def rg(graph=None):
-    run_graphs.run_graphs(graph=graph, p=p, mc2list=mc2list, ma2list=ma2list, list_grouper=list_grouper, nars=nars)
+    run_graphs.run_graphs(graph=graph, p=p, mc2list=mc2list, ma2list=ma2list, mcmatrix=mcmatrix, list_grouper=list_grouper, nars=nars)
