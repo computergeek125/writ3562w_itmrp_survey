@@ -9,7 +9,7 @@ import sys
 import textwrap
 
 from qualtrics_api.Qv3 import Qualtrics_v3 as Q
-from nars import Nars
+import nars as Nars
 #import oldplotting as op
 import pdplot as p
 import settings
@@ -51,12 +51,7 @@ except NameError:
 matplotlib.style.use('ggplot')
 mp_rc.update({'figure.autolayout': True})
 u.reload_window()
-nars = Nars(survey, survey_data)
-
-def new2old(pdata): 
-    # Creates old-style dictionary returns from Pandas data structures
-    # Ignores keys because it's not used
-    return {"bars":pdata.tolist(), "names":copy(pdata.index)}
+nars = Nars.Nars(survey, survey_data)
 
 def mc2list(qcol):
     try:
