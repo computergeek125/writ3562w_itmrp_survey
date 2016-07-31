@@ -44,7 +44,7 @@ sys.stdout.write("Survey Name: {0}\n".format(survey['name']))
 sys.stderr.write("\n")
 try:
     __IPYTHON__
-    sys.stderr.write("Type '%pylab' (without the quotes) to initialize IPython\n")
+    sys.stderr.write("Type '%matplotlib' (without the quotes) to initialize IPython\n")
 except NameError:
     sys.stderr.write("Warning: This script was designed for IPython.  Running without IPython may yield unexpected results.\n")
 
@@ -171,21 +171,16 @@ def mcmatrix(qcol):
         return None
     choices = question['choices']
     sub_questions = question['subQuestions']
-    pairs = []
+    data = pd.DataFrame({})# index=range(len(choices)))
     for i in qn:
-        data = mc2list(i)
-        bars = data['bars']
-        for j in range(len(bars)):
-            pairs.append([j+1, int(qcols[i][2]), bars[j]])
-    names1 = []
-    keys1 = sorted(choices.keys(), key=int)
-    for i in keys1:
-        names1 += [choices[i]['description']]
-    names2 = []
-    keys2 = sorted(sub_questions.keys(), key=int)
-    for i in keys2:
-        names2 += [sub_questions[i]['description']]
-    return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2}
+        row = mc2list(i)
+        data[i] = row
+    qnames = []
+    qkeys = sorted(sub_questions.keys(), key=int)
+    for i in qkeys:
+        qnames += [sub_questions[i]['description']]
+    data.columns = qnames
+    return data
 
 #TODO: Text analysis (report) Grab text with selectable metadata, filtering null answers
 
