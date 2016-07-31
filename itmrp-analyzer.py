@@ -9,7 +9,8 @@ import sys
 import textwrap
 
 from qualtrics_api.Qv3 import Qualtrics_v3 as Q
-import oldplotting as op
+from nars import Nars
+#import oldplotting as op
 import pdplot as p
 import settings
 import util as u
@@ -50,6 +51,7 @@ except NameError:
 matplotlib.style.use('ggplot')
 mp_rc.update({'figure.autolayout': True})
 u.reload_window()
+nars = Nars(survey, survey_data)
 
 def new2old(pdata): 
     # Creates old-style dictionary returns from Pandas data structures
@@ -129,10 +131,10 @@ def mcpaired(qcol1, qcol2):
     qid2 = survey['exportColumnMap'][qcol2]['question']
     question1 = survey['questions'][qid1]
     question2 = survey['questions'][qid2]
-    if question1['questionType']['type'] != "MC" and question['questionType']['selector'] != "SAVR":
+    if question['questionType']['type'] == "MC" and (question['questionType']['selector'] == "SAVR" or question['questionType']['selector'] == "SAHR"):
         sys.stderr.write("{0} is not a multiple choice, single-answer question\n".format(qcol1))
         return None
-    if question2['questionType']['type'] != "MC" and question['questionType']['selector'] != "SAVR":
+    if question['questionType']['type'] == "MC" and (question['questionType']['selector'] == "SAVR" or question['questionType']['selector'] == "SAHR"):
         sys.stderr.write("{0} is not a multiple choice, single-answer question\n".format(qcol2))
         return None
     choices1 = question1['choices']
@@ -196,67 +198,6 @@ def mcmatrix(qcol, exclude_choice=[]):
     return {"pairs":pairs, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2}
 
 #TODO: Text analysis (report) Grab text with selectable metadata, filtering null answers
-def nars_raw(nars_list, inverted=False, inversion_base=5):
-    template = {}
-    for i in nars_list:
-        template[i] = pd.Series([np.NaN]*N, dtype=np.float64)
-    rawdata = pd.DataFrame(template)
-    rids = []
-    for respondant,i in zip(survey_data['responses'], range(N)):
-        for sq in nars_list:
-            ans = respondant[sq]
-            if ans == "":
-                pass # Throw out questions they didn't answer
-            else:
-                s = int(ans)
-                if inverted:
-                    rawdata[sq] = likert_invert(s, inversion_base)
-                else:
-                    rawdata[sq][i] = s
-        rids.append(respondant['ResponseID'])
-    if len(nars_list) < 1:
-        rawdata = pd.DataFrame(index=rids)
-    else:
-        rawdata.index = rids
-    return rawdata
-def nars(nars_list, inverted=False, inversion_base=5):
-    rawdata = nars_raw(nars_list, inverted=inverted, inversion_base=inversion_base)
-    nars_score = pd.DataFrame({'mean':rawdata.mean(1), 'std':rawdata.std(1)})
-    return nars_score
-
-def nars_associate(nars_s1, nars_s2, nars_s3, questions):
-    resp = nars_s1.index
-    template = {"nars_s1_mean":nars_s1['mean'], "nars_s1_std":nars_s1['std'], 
-                "nars_s2_mean":nars_s2['mean'], "nars_s2_std":nars_s2['std'], 
-                "nars_s3_mean":nars_s3['mean'], "nars_s3_std":nars_s3['std']}
-    for i in questions:
-        template[i] = pd.Series()
-    data = pd.DataFrame(template)
-    for i in survey_data['responses']:
-        rid = i['ResponseID']
-        if rid in resp:
-            for j in questions:
-                data.loc[rid][j]  = i[j]
-    return data
-
-def nars_dropNaN(nars_assoc):
-    newdata = nars_assoc.copy()
-    newdata = newdata[np.isfinite(newdata['nars_s1_mean'])]
-    newdata = newdata[np.isfinite(newdata['nars_s2_mean'])]
-    newdata = newdata[np.isfinite(newdata['nars_s3_mean'])]
-    return newdata
-
-def likert_invert(input_num, scale):
-    if (scale % 2 == 0):
-        raise ValueError("Likert scales must be odd numbers!  You provided a scale of {0}".format(scale))
-    if (input_num < 1 or input_num > scale):
-        raise ValueError("Likert scale input must be between 1 and {0} inclusive".format(scale))
-    return scale - input_num +1
-
-def print_nars(nars_processed):
-    for x in nars_processed.keys():
-        i = nars_processed[x]
-        sys.stdout.write("{0}: m={1} s={2}\n".format(i['ResponseID'], i['mean'], i['std']))
 
 def rg(graph=None):
-    run_graphs.run_graphs(graph=graph, p=p, mc2list=mc2list, ma2list=ma2list, list_grouper=list_grouper)
+    run_graphs.run_graphs(graph=graph, p=p, mc2list=mc2list, ma2list=ma2list, list_grouper=list_grouper, nars=nars)
