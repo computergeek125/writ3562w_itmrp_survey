@@ -38,6 +38,13 @@ class Nars:
         nars_score = pd.DataFrame({'mean':rawdata.mean(1), 'std':rawdata.std(1)})
         return nars_score
 
+    def nars_mean(self, nars_s):
+        nmv = nars_s['mean']
+        return pd.Series([nmv.mean(), nmv.std()], index=["mean", "std"])
+    def nars_means(self, nars_s1, nars_s2, nars_s3):
+        data = {"NARS S1":self.nars_mean(nars_s1), "NARS S2":self.nars_mean(nars_s2), "NARS S3":self.nars_mean(nars_s3)}
+        return pd.DataFrame(data)
+
     def nars_associate(self, nars_s1, nars_s2, nars_s3, questions):
         resp = nars_s1.index
         template = {"nars_s1_mean":nars_s1['mean'], "nars_s1_std":nars_s1['std'], 
