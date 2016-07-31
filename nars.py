@@ -103,6 +103,41 @@ class Nars:
         data.columns = columns
         return data
 
+    def nars_associate_byinfo(self, nars_s1, nars_s2, nars_s3, info):
+        #resp = nars_s1.index
+        #print(nars_s1['mean'])
+        template = {"nars_s1_mean":nars_s1['mean'], "nars_s1_std":nars_s1['std'], 
+                    "nars_s2_mean":nars_s2['mean'], "nars_s2_std":nars_s2['std'], 
+                    "nars_s3_mean":nars_s3['mean'], "nars_s3_std":nars_s3['std']}
+        data = pd.DataFrame(template)
+        #print(template)
+        #print(data)
+        data['info'] = info
+        return data
+
+    def nars_associate_byinfo_mean(self, nars_assoc, info_labels):
+        nars_assoc = self.nars_dropNaN(nars_assoc)
+        base = {}
+        idx = ['nars_s1_mean', 'nars_s1_std', 'nars_s2_mean', 'nars_s2_std', 'nars_s3_mean', 'nars_s3_std']
+        for i in info_labels.keys():
+            subset = nars_assoc.loc[nars_assoc['info'] == int(i)]
+            ns1m = subset['nars_s1_mean'].mean()
+            ns1s = subset['nars_s1_mean'].std()
+            ns2m = subset['nars_s2_mean'].mean()
+            ns2s = subset['nars_s2_mean'].std()
+            ns3m = subset['nars_s3_mean'].mean()
+            ns3s = subset['nars_s3_mean'].std()
+            pds = pd.Series([ns1m, ns1s, ns2m, ns2s, ns3m, ns3s], dtype=np.float64)
+            base[i] = pds
+        data = pd.DataFrame(base)
+        data.index = idx
+        columns = []
+        #ecols 
+        for i in range(len(data.columns)):
+            columns.append(info_labels[data.columns[i]])
+        data.columns = columns
+        return data
+
     def likert_invert(self, input_num, scale):
         if (scale % 2 == 0):
             raise ValueError("Likert scales must be odd numbers!  You provided a scale of {0}".format(scale))
