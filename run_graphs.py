@@ -9,7 +9,7 @@ try:
 except NameError:
     raise RuntimeError("This script is for IPython magics")
 
-def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, mcmatrix=None, list_grouper=None, nars=None):
+def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, mcmatrix=None, list_grouper=None, nars=None, nars_calc=None, nars_mrp_calc=None):
     if graph is None or graph=="age":
         print("Plotting age demographics")
         f1,a1 = plt.subplots()
@@ -39,7 +39,7 @@ def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, mcmatrix=None, li
         d = list_grouper(mc2list("Q3.5"), mc2list("Q3.8"), mc2list("Q3.11"), mc2list("Q3.14"), mc2list("Q3.17"), mc2list("Q3.20"), mc2list("Q3.23"), mc2list("Q3.26"))
         d = d.drop("Not applicable",0)
         f7,a7 = plt.subplots()
-        p.pdplot(d, legend=("In Person", "Phone", "Email", "SMS", "Live Chat", "Forums", "Remote Access", "Other", "Total"), title="Tech Support Experiences", ax=a7)
+        p.pdplot(d, legend=("In Person", "Phone", "Email", "SMS", "Live Chat", "Forums", "Remote Access", "Other", "Total"), title="Tech Support Experiences", ax=a7, figsize=(10,6))
     if graph is None or graph=="mrpe":
         print("Plotting MRP exp")
         d = mcmatrix("Q4.2")
@@ -49,13 +49,12 @@ def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, mcmatrix=None, li
     if graph is None or graph=="nars_avg":
         print("Plotting NARS averages")
         f9,a9 = plt.subplots()
-        n = nars.nars_means(nars.nars(settings.nars_s1), nars.nars(settings.nars_s2), nars.nars(settings.nars_s3, inverted=True))
-        p.pdplot(n.loc['mean'], title="NARS Scores", ybound=[1,5], yerr=n.loc['std'],ax=a9)
+        n = nars.means(*nars_calc())
+        p.pdplot(n.loc['mean'], title="NARS Scores", ybound=[1,5], yerr=n.loc['std'], ax=a9)
     if graph is None or graph == "nars_age":
         print("Plotting NARS split by age")
         f10,a10 = plt.subplots()
-        n = nars.nars(settings.nars_s1), nars.nars(settings.nars_s2), nars.nars(settings.nars_s3, inverted=True)
-        p.nars_graphby(nars, n, "Q2.1", title="NARS by Age Group", ax=a10)
+        p.nars_graphby(nars, *nars_calc(), "Q2.1", title="NARS by Age Group", ax=a10)
 
 #f,x = plot_mc("Q2.1", listifier=mc2list, label_length=15, label_clip=30, title="Age")
 #f,x = plot_mc("Q2.2", listifier=mc2list, label_length=15, label_clip=30, title="Computer Use")

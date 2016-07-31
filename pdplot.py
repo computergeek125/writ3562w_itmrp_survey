@@ -44,8 +44,16 @@ def pdplot(pddata, kind='bar', title=None, xlabel=None, ylabel=None, legend=[],
     return ax
 
 def nars_graphby(nars, nars_s1, nars_s2, nars_s3, question, **kwargs):
-    na = nars.nars_associate(nars_s1, nars_s2, nars_s3, [question])
-    nam = nars.nars_associate_mean(na, question)
+    na = nars.associate(nars_s1, nars_s2, nars_s3, [question])
+    nam = nars.associate_mean(na, question)
+    na_means = nam.loc[['nars_s1_mean','nars_s2_mean','nars_s3_mean']]
+    na_err = nam.loc[['nars_s1_std','nars_s2_std','nars_s3_std']]
+    na_means.index = ["NARS S1", "NARS S2", "NARS S3"]
+    na_err.index = ["NARS S1", "NARS S2", "NARS S3"]
+    ax = pdplot(na_means, **kwargs, yerr=na_err)
+    return ax
+def nars_graphby_info(nars, nars_assoc, info_labels, **kwargs):
+    nam = nars.associate_byinfo_mean(nars_assoc, info_labels)
     na_means = nam.loc[['nars_s1_mean','nars_s2_mean','nars_s3_mean']]
     na_err = nam.loc[['nars_s1_std','nars_s2_std','nars_s3_std']]
     na_means.index = ["NARS S1", "NARS S2", "NARS S3"]
