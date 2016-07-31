@@ -43,7 +43,7 @@ def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, list_grouper=None
     if graph is None or graph is "nars_age":
         print("Plotting NARS split by age")
         f8,a8 = plt.subplots()
-        p.nars_graphby(nars,nars.nars(settings.nars_s1), nars.nars(settings.nars_s2), nars.nars(settings.nars_s3, inverted=True), "Q2.1", title="NARS by Age Group" ax=a8)
+        p.nars_graphby(nars,nars.nars(settings.nars_s1), nars.nars(settings.nars_s2), nars.nars(settings.nars_s3, inverted=True), "Q2.1", title="NARS by Age Group", ax=a8)
 
 #f,x = plot_mc("Q2.1", listifier=mc2list, label_length=15, label_clip=30, title="Age")
 #f,x = plot_mc("Q2.2", listifier=mc2list, label_length=15, label_clip=30, title="Computer Use")
