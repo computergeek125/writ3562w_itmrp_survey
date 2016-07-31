@@ -153,7 +153,7 @@ def mcpaired(qcol1, qcol2):
         names2 += [choices2[i]['choiceText']]
     return {"pairs":data, "keys1":keys1,"keys2":keys2, "names1":names1,"names2":names2}
 
-def mcmatrix(qcol, exclude_choice=[]):
+def mcmatrix(qcol):
     qcols = {}
     for i in survey['exportColumnMap'].keys():
         if i.startswith(qcol+"_"):
@@ -177,16 +177,6 @@ def mcmatrix(qcol, exclude_choice=[]):
         bars = data['bars']
         for j in range(len(bars)):
             pairs.append([j+1, int(qcols[i][2]), bars[j]])
-    for e in exclude_choice:
-        echoice = None
-        for c in choices:
-            cd = choices[c]['description']
-            if cd == e:
-                echoice = int(c)
-                break
-        if not echoice:
-            raise RuntimeError("Choice {0} could not be excluded because it doesn't exist...".format(e))
-        raise NotImplementedError("TODO")
     names1 = []
     keys1 = sorted(choices.keys(), key=int)
     for i in keys1:
