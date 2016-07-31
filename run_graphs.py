@@ -9,7 +9,7 @@ try:
 except NameError:
     raise RuntimeError("This script is for IPython magics")
 
-def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, list_grouper=None, nars=None):
+def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, mcmatrix=None, list_grouper=None, nars=None):
     if graph is None or graph=="age":
         print("Plotting age demographics")
         f1,a1 = plt.subplots()
@@ -38,12 +38,20 @@ def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, list_grouper=None
         print("Plotting tech support experience")
         d = list_grouper(mc2list("Q3.5"), mc2list("Q3.8"), mc2list("Q3.11"), mc2list("Q3.14"), mc2list("Q3.17"), mc2list("Q3.20"), mc2list("Q3.23"), mc2list("Q3.26"))
         d = d.drop("Not applicable",0)
+        d['Total'] = d.sum(1)
         f7,a7 = plt.subplots()
-        p.pdplot(d, legend=("In Person", "Phone", "Email", "SMS", "Live Chat", "Forums", "Remote Access", "Other"), title="Tech Support Experiences", ax=a7)
-    if graph is None or graph is "nars_age":
-        print("Plotting NARS split by age")
+        p.pdplot(d, legend=("In Person", "Phone", "Email", "SMS", "Live Chat", "Forums", "Remote Access", "Other", "Total"), title="Tech Support Experiences", ax=a7)
+    if graph is None or graph=="mrpe":
+        print("Plotting MRP exp")
+        d = mcmatrix("Q4.2")
+        d = d.drop("None",0)
+        d['Total'] = d.sum(1)
         f8,a8 = plt.subplots()
-        p.nars_graphby(nars,nars.nars(settings.nars_s1), nars.nars(settings.nars_s2), nars.nars(settings.nars_s3, inverted=True), "Q2.1", title="NARS by Age Group", ax=a8)
+        p.pdplot(d, title="MRP Experience", ax=a8)
+    if graph is None or graph == "nars_age":
+        print("Plotting NARS split by age")
+        f9,a9 = plt.subplots()
+        p.nars_graphby(nars,nars.nars(settings.nars_s1), nars.nars(settings.nars_s2), nars.nars(settings.nars_s3, inverted=True), "Q2.1", title="NARS by Age Group", ax=a9)
 
 #f,x = plot_mc("Q2.1", listifier=mc2list, label_length=15, label_clip=30, title="Age")
 #f,x = plot_mc("Q2.2", listifier=mc2list, label_length=15, label_clip=30, title="Computer Use")
