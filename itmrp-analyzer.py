@@ -177,6 +177,21 @@ def mcmatrix(qcol):
     data.columns = qnames
     return data
 
+def hasq_in_val(qcol, values):
+    rids = []
+    data = pd.Series(np.array([0]*N, dtype=np.bool))
+    for i,j in zip(survey_data['responses'], range(N)):
+        if i[qcol] in values:
+            data[j] = True
+        else:
+            data[j] = False
+        rids.append(i['ResponseID'])
+    data.index = rids
+    return data
+
+def nars_calc():
+    return nars.nars(settings.nars_s1), nars.nars(settings.nars_s2), nars.nars(settings.nars_s3, inverted=True)
+
 #TODO: Text analysis (report) Grab text with selectable metadata, filtering null answers
 
 def rg(graph=None):
