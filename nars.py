@@ -60,14 +60,17 @@ class Nars:
                     data.loc[rid][j]  = i[j]
         return data
 
-    def nars_dropNaN(self, nars_assoc):
+    def dropNaN(self, nars_assoc, ignore=[]):
         newdata = nars_assoc.copy()
-        newdata = newdata[np.isfinite(newdata['nars_s1_mean'])]
-        newdata = newdata[np.isfinite(newdata['nars_s2_mean'])]
-        newdata = newdata[np.isfinite(newdata['nars_s3_mean'])]
+        if 's1' not in ignore:
+            newdata = newdata[np.isfinite(newdata['nars_s1_mean'])]
+        if 's2' not in ignore:
+            newdata = newdata[np.isfinite(newdata['nars_s2_mean'])]
+        if 's3' not in ignore:
+            newdata = newdata[np.isfinite(newdata['nars_s3_mean'])]
         return newdata
 
-    def nars_associate_mean(self, nars_assoc, qcol):
+    def associate_mean(self, nars_assoc, qcol):
         nars_assoc = self.nars_dropNaN(nars_assoc)
         try:
             qid = self.survey['exportColumnMap'][qcol]['question']
@@ -103,7 +106,7 @@ class Nars:
         data.columns = columns
         return data
 
-    def nars_associate_byinfo(self, nars_s1, nars_s2, nars_s3, info):
+    def associate_byinfo(self, nars_s1, nars_s2, nars_s3, info):
         #resp = nars_s1.index
         #print(nars_s1['mean'])
         template = {"nars_s1_mean":nars_s1['mean'], "nars_s1_std":nars_s1['std'], 
@@ -115,7 +118,7 @@ class Nars:
         data['info'] = info
         return data
 
-    def nars_associate_byinfo_mean(self, nars_assoc, info_labels):
+    def associate_byinfo_mean(self, nars_assoc, info_labels):
         nars_assoc = self.nars_dropNaN(nars_assoc)
         base = {}
         idx = ['nars_s1_mean', 'nars_s1_std', 'nars_s2_mean', 'nars_s2_std', 'nars_s3_mean', 'nars_s3_std']
