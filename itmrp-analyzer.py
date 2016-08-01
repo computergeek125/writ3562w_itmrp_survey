@@ -4,7 +4,6 @@ import matplotlib
 from matplotlib import rcParams as mp_rc
 import numpy as np
 import pandas as pd
-from pprint import pprint
 import sys
 import textwrap
 
@@ -53,7 +52,7 @@ mp_rc.update({'figure.autolayout': True})
 u.reload_window()
 nars = Nars.Nars(survey, survey_data)
 
-def mc2list(qcol):
+def mc2list(qcol, percent=False):
     try:
         qid = survey['exportColumnMap'][qcol]['question']
         question = survey['questions'][qid]
@@ -66,6 +65,7 @@ def mc2list(qcol):
     else:
         raise RuntimeError("{0} is not a multiple choice, single-answer type question\n".format(qcol))
         return None
+    n=0
     choices = question['choices']
     ck = sorted(choices.keys(), key=int)
     data = pd.Series([0]*len(ck), name=qcol, index=ck, dtype=int)
@@ -74,7 +74,11 @@ def mc2list(qcol):
         if ans == "":
             pass # Throw out questions they didn't answer
         else:
+            n+=1
             data[ans] += 1
+    if percent:
+        if n > 0:
+            data = data.apply(lambda x:x/n)
     names = []
     keys = data.index
     for i in keys:
@@ -203,4 +207,4 @@ def nars_mrp_calc():
 #TODO: Text analysis (report) Grab text with selectable metadata, filtering null answers
 
 def rg(graph=None):
-    run_graphs.run_graphs(graph=graph, p=p, mc2list=mc2list, ma2list=ma2list, mcmatrix=mcmatrix, list_grouper=list_grouper, nars=nars, nars_calc=nars_calc, nars_mrp_calc=nars_mrp_calc)
+    run_graphs.run_graphs(graph=graph, p=p, mc2list=mc2list, ma2list=ma2list, mcmatrix=mcmatrix, list_grouper=list_grouper, nars=nars, nars_calc=nars_calc, nars_mrp_calc=nars_mrp_calc, hasqs_in_val=hasqs_in_val)
