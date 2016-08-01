@@ -71,7 +71,7 @@ class Nars:
         return newdata
 
     def associate_mean(self, nars_assoc, qcol):
-        nars_assoc = self.dropNaN(nars_assoc)
+        #nars_assoc = self.dropNaN(nars_assoc)
         try:
             qid = self.survey['exportColumnMap'][qcol]['question']
             question = self.survey['questions'][qid]
@@ -119,7 +119,7 @@ class Nars:
         return data
 
     def associate_byinfo_mean(self, nars_assoc, info_labels):
-        nars_assoc = self.dropNaN(nars_assoc)
+        #nars_assoc = self.dropNaN(nars_assoc)
         base = {}
         idx = ['nars_s1_mean', 'nars_s1_std', 'nars_s2_mean', 'nars_s2_std', 'nars_s3_mean', 'nars_s3_std']
         for i in info_labels.keys():
