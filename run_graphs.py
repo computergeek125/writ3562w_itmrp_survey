@@ -9,7 +9,8 @@ try:
 except NameError:
     raise RuntimeError("This script is for IPython magics")
 
-def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, mcmatrix=None, list_grouper=None, nars=None, nars_calc=None, nars_mrp_calc=None):
+def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, mcmatrix=None, list_grouper=None, nars=None, nars_calc=None, nars_mrp_calc=None, hasqs_in_val=None):
+    #demographics
     if graph is None or graph=="age":
         print("Plotting age demographics")
         f1,a1 = plt.subplots()
@@ -36,30 +37,76 @@ def run_graphs(graph=None, p=None, mc2list=None, ma2list=None, mcmatrix=None, li
         p.pdplot(ma2list("Q3.1"), title="Sorurces of IT support", xtick_labels=settings.cQ3_1_short, ax=a6)
     if graph is None or graph=="itse":
         print("Plotting tech support experience")
-        d = list_grouper(mc2list("Q3.5"), mc2list("Q3.8"), mc2list("Q3.11"), mc2list("Q3.14"), mc2list("Q3.17"), mc2list("Q3.20"), mc2list("Q3.23"), mc2list("Q3.26"))
+        d = list_grouper(mc2list("Q3.5", percent=True), mc2list("Q3.8", percent=True), mc2list("Q3.11", percent=True), 
+            mc2list("Q3.14", percent=True), mc2list("Q3.17", percent=True), mc2list("Q3.20", percent=True), 
+            mc2list("Q3.23", percent=True), mc2list("Q3.26", percent=True))
         d = d.drop("Not applicable",0)
         f7,a7 = plt.subplots()
-        p.pdplot(d, legend=("In Person", "Phone", "Email", "SMS", "Live Chat", "Forums", "Remote Access", "Other", "Total"), title="Tech Support Experiences", ax=a7, figsize=(10,6))
+        f7.set_size_inches(10, 6, forward=True)
+        legend = ("In Person", "Phone", "Email", "SMS", "Live Chat", "Forums", "Remote Access", "Other", "Total")
+        p.pdplot(d, legend=legend, title="Tech Support Experiences", ax=a7)
+    if graph is None or graph=="itsen":
+        print("Plotting tech support experience (normalized)")
+        d = list_grouper(mc2list("Q3.5", percent=True), mc2list("Q3.8", percent=True), mc2list("Q3.11", percent=True), 
+            mc2list("Q3.14", percent=True), mc2list("Q3.17", percent=True), mc2list("Q3.20", percent=True), 
+            mc2list("Q3.23", percent=True), mc2list("Q3.26", percent=True))
+        d = d.drop("Not applicable",0)
+        f8,a8 = plt.subplots()
+        f8.set_size_inches(10, 6, forward=True)
+        legend = ("In Person", "Phone", "Email", "SMS", "Live Chat", "Forums", "Remote Access", "Other", "Total")
+        p.pdplot(d, legend=legend, title="Tech Support Experiences (normalized)", ax=a8)
     if graph is None or graph=="mrpe":
         print("Plotting MRP exp")
         d = mcmatrix("Q4.2")
         d = d.transpose()
-        f8,a8 = plt.subplots()
-        p.pdplot(d, title="MRP Experience", ax=a8, stacked=True)
+        f9,a9 = plt.subplots()
+        p.pdplot(d, title="MRP Experience", ax=a9, stacked=True)
+
+    #nars
     if graph is None or graph=="nars_avg":
         print("Plotting NARS averages")
-        f9,a9 = plt.subplots()
+        f10,a10 = plt.subplots()
         n = nars.means(*nars_calc())
-        p.pdplot(n.loc['mean'], title="NARS Scores", ybound=[1,5], yerr=n.loc['std'], ax=a9)
+        p.pdplot(n.loc['mean'], title="MRP NARS Scores", yerr=n.loc['std'], ybound=[1,5], ax=a10)
+    if graph is None or graph=="itnars_avg":
+        print("Plotting IT MRP NARS averages")
+        f11,a11 = plt.subplots()
+        n = nars.means(*nars_mrp_calc())
+        p.pdplot(n.loc['mean'], title="IT MRP NARS Scores", yerr=n.loc['std'], ybound=[1,5], ax=a11)
+    
     if graph is None or graph == "nars_age":
         print("Plotting NARS split by age")
-        f10,a10 = plt.subplots()
-        p.nars_graphby(nars, *nars_calc(), "Q2.1", title="NARS by Age Group", ax=a10)
+        f12,a12 = plt.subplots()
+        f12.set_size_inches(9.75, 6, forward=True)
+        p.nars_graphby(nars, *nars_calc(), "Q2.1", title="MRP NARS by Age Group", ybound=[1,5], ax=a12)
+    if graph is None or graph == "itnars_age":
+        print("Plotting IT MRP NARS split by age")
+        f13,a13 = plt.subplots()
+        f13.set_size_inches(9.75, 6, forward=True)
+        p.nars_graphby(nars, *nars_mrp_calc(), "Q2.1", title="IT MRP NARS by Age Group", ybound=[1,5], ax=a13)
+    
+    if graph is None or graph == "nars_skill":
+        print("Plotting NARS split by age")
+        f14,a14 = plt.subplots()
+        f14.set_size_inches(9.75, 6, forward=True)
+        legend=("Basic", "Knowledgable", "Enthusiast", "Professional", "Other")
+        p.nars_graphby(nars, *nars_calc(), "Q2.4", title="MRP NARS by Computer Skill", legend=legend, ybound=[1,5], ax=a14)
+    if graph is None or graph == "itnars_skill":
+        print("Plotting IT MRP NARS split by age")
+        f15,a15 = plt.subplots()
+        f15.set_size_inches(9.75, 6, forward=True)
+        legend=("Basic", "Knowledgable", "Enthusiast", "Professional", "Other")
+        p.nars_graphby(nars, *nars_mrp_calc(), "Q2.4", title="IT MRP NARS by Computer Skill", legend= legend, ybound=[1,5], ax=a15)
 
-#f,x = plot_mc("Q2.1", listifier=mc2list, label_length=15, label_clip=30, title="Age")
-#f,x = plot_mc("Q2.2", listifier=mc2list, label_length=15, label_clip=30, title="Computer Use")
-#f,x = plot_mc("Q2.3", listifier=ma2list, label_length=15, label_clip=30, title="Computer Use Location")
-#f,x = plot_mc("Q2.4", listifier=mc2list, label_length=15, label_clip=30, title="Computer Knowledge", xtick_rotation=-45, xtick_labels=settings.cQ2_4_short)
-#f,x = plot_mc("Q2.5", listifier=ma2list, label_length=18, label_clip=30, title="Games Enjoyed", xtick_rotation=-60, xtick_labels=settings.cQ2_5_short)
-#f,x = plot_mc(ma2list("Q3.1"), title="Sorurces of IT support", xtick_labels=settings.cQ3_1_short)
-#f,x = plot_mc(d, legend=("In Person", "Phone", "Email", "SMS", "Live Chat", "Forums", "Remote Access", "Other"), title="Tech Support Experiences")
+    if graph is None or graph == "nars_mrpe":
+        print("Plotting NARS split by MRP Experience")
+        f16,a16 = plt.subplots()
+        hq = hasqs_in_val(["Q4.2_1", "Q4.2_2", "Q4.2_3", "Q4.2_4"], ["2", "3", "4", "5"])
+        na = nars.associate_byinfo(*nars_calc(), hq)
+        p.nars_graphby_info(nars, na, {True:"Has MRP experience", False:"No MRP Experience"}, title="NARS by MRP Experience", ybound=[1,5], ax=a16)
+    if graph is None or graph == "itnars_mrpe":
+        print("Plotting IT NARS split by MRP Experience")
+        f17,a17 = plt.subplots()
+        hq = hasqs_in_val(["Q4.2_1", "Q4.2_2", "Q4.2_3", "Q4.2_4"], ["2", "3", "4", "5"])
+        na = nars.associate_byinfo(*nars_mrp_calc(), hq)
+        p.nars_graphby_info(nars, na, {True:"Has MRP experience", False:"No MRP Experience"}, title="NARS by MRP Experience", ybound=[1,5], ax=a17)
