@@ -45,7 +45,7 @@ class Nars:
         data = {"NARS S1":self.mean(nars_s1), "NARS S2":self.mean(nars_s2), "NARS S3":self.mean(nars_s3)}
         return pd.DataFrame(data)
 
-    def associate(self, nars_s1, nars_s2, nars_s3, questions):
+    def associate_mc(self, nars_s1, nars_s2, nars_s3, questions):
         resp = nars_s1.index
         template = {"nars_s1_mean":nars_s1['mean'], "nars_s1_std":nars_s1['std'], 
                     "nars_s2_mean":nars_s2['mean'], "nars_s2_std":nars_s2['std'], 
@@ -60,6 +60,37 @@ class Nars:
                     data.loc[rid][j]  = i[j]
         return data
 
+    def associate_ma(self, nars_s1, nars_s2, nars_s3, questions):
+        resp = nars_s1.index
+        template = {"nars_s1_mean":nars_s1['mean'], "nars_s1_std":nars_s1['std'], 
+                    "nars_s2_mean":nars_s2['mean'], "nars_s2_std":nars_s2['std'], 
+                    "nars_s3_mean":nars_s3['mean'], "nars_s3_std":nars_s3['std']}
+        if len(questions) > 1:
+            raise NotImplementedError("Processing batches of questions is not possible at this time")
+        qcols = {}
+        for i in self.survey['exportColumnMap'].keys():
+            if i.startswith(questions[0]+"_"):
+                if i.endswith("_TEXT"):
+                    continue
+                try:
+                    qcols[i] = self.survey['exportColumnMap'][i]['choice'].split(".")
+                except KeyError:
+                    raise RuntimeError("{0} is not a multiple choice-multiple answer question\n".format(qcol))
+        qn = sorted(qcols.keys(), key=lambda k: int(qcols[k][2]))
+        for i in qn:
+            template[i] = pd.Series()
+        data = pd.DataFrame(template)
+        for i in self.survey_data['responses']:
+            rid = i['ResponseID']
+            if rid in resp:
+                for j in qn:
+                    if i[j]:
+                        a = 1
+                    else:
+                        a = 0
+                    data.loc[rid][j]  = a
+        return data
+
     def dropNaN(self, nars_assoc, ignore=[]):
         newdata = nars_assoc.copy()
         if 's1' not in ignore:
@@ -70,7 +101,46 @@ class Nars:
             newdata = newdata[np.isfinite(newdata['nars_s3_mean'])]
         return newdata
 
-    def associate_mean(self, nars_assoc, qcol):
+    def associate_ma_mean(self, nars_assoc, qcol):
+        #nars_assoc = self.dropNaN(nars_assoc)
+        qcols = {}
+        for i in self.survey['exportColumnMap'].keys():
+            if i.startswith(qcol+"_"):
+                if i.endswith("_TEXT"):
+                    continue
+                try:
+                    qcols[i] = self.survey['exportColumnMap'][i]['choice'].split(".")
+                except KeyError:
+                    raise RuntimeError("{0} is not a multiple choice-multiple answer question\n".format(qcol))
+        qn = sorted(qcols.keys(), key=lambda k: int(qcols[k][2]))
+        qid = self.survey['exportColumnMap'][qn[0]]['question']
+        question = self.survey['questions'][qid]
+        if question['questionType']['type'] != "MC" and question['questionType']['selector'] != "MAVR":
+            raise RuntimeError("{0} is not a multiple choice-multiple answer question\n".format(qcol))
+            return None
+        choices = question['choices']
+        base = {}
+        idx = ['nars_s1_mean', 'nars_s1_std', 'nars_s2_mean', 'nars_s2_std', 'nars_s3_mean', 'nars_s3_std']
+        for i in qn:
+            subset = nars_assoc.loc[nars_assoc[i] == 1]
+            ns1m = subset['nars_s1_mean'].mean()
+            ns1s = subset['nars_s1_mean'].std()
+            ns2m = subset['nars_s2_mean'].mean()
+            ns2s = subset['nars_s2_mean'].std()
+            ns3m = subset['nars_s3_mean'].mean()
+            ns3s = subset['nars_s3_mean'].std()
+            pds = pd.Series([ns1m, ns1s, ns2m, ns2s, ns3m, ns3s], dtype=np.float64)
+            base[qcols[i][2]] = pds
+        data = pd.DataFrame(base, columns=sorted(base.keys(), key=int))
+        data.index = idx
+        columns = []
+        #ecols 
+        for i in range(len(data.columns)):
+            columns.append(choices[data.columns[i]]['choiceText'])
+        data.columns = columns
+        return data
+
+    def associate_mc_mean(self, nars_assoc, qcol):
         #nars_assoc = self.dropNaN(nars_assoc)
         try:
             qid = self.survey['exportColumnMap'][qcol]['question']
