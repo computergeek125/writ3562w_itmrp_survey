@@ -1,10 +1,12 @@
 # this script is designed to be run via the IPython %run magic
 import matplotlib.pyplot as plt
+import numpy as np
 import sys
 
 import pdplot as p
 import qualtrics_api.Qv3_helpers as qh
 import settings
+import util as u
 
 try:
     __IPYTHON__
@@ -12,7 +14,7 @@ try:
 except NameError:
     raise RuntimeError("This script is for IPython magics")
 
-def run_graphs(graph=None, qh=None, nars=None, nars_calc=None, nars_mrp_calc=None):
+def run_graphs(graph=None, qh=None, nars=None, nars_calc=None, nars_mrp_calc=None, **kwargs):
     #demographics
     if graph is None or graph=="age":
         print("Plotting age demographics")
@@ -26,7 +28,7 @@ def run_graphs(graph=None, qh=None, nars=None, nars_calc=None, nars_mrp_calc=Non
     if graph is None or graph=="cul":
         print("Plotting computer usage location")
         f3,a3 = plt.subplots()
-        p.pdplot(qh.mcpaired("Q2.3"), title="Computer Use Location", label_clip=30, ax=a3)
+        p.pdplot(qh.ma2list("Q2.3"), title="Computer Use Location", label_clip=30, ax=a3)
     if graph is None or graph=="cn":
         print("Plotting computer knowledge")
         f4,a4 = plt.subplots()
@@ -90,40 +92,57 @@ def run_graphs(graph=None, qh=None, nars=None, nars_calc=None, nars_mrp_calc=Non
         p.nars_graphby_mc(nars, *nars_mrp_calc(), "Q2.1", title="IT MRP NARS by Age Group", ybound=[1,5], ax=a13)
     
     if graph is None or graph == "nars_skill":
-        print("Plotting NARS split by age")
+        print("Plotting NARS split by computer skil")
         f14,a14 = plt.subplots()
         f14.set_size_inches(9.75, 6, forward=True)
         legend=("Basic", "Knowledgable", "Enthusiast", "Professional", "Other")
         p.nars_graphby_mc(nars, *nars_calc(), "Q2.4", title="MRP NARS by Computer Skill", legend=legend, ybound=[1,5], ax=a14)
     if graph is None or graph == "itnars_skill":
-        print("Plotting IT MRP NARS split by age")
+        print("Plotting IT MRP NARS split by computer skill")
         f15,a15 = plt.subplots()
         f15.set_size_inches(9.75, 6, forward=True)
         legend=("Basic", "Knowledgable", "Enthusiast", "Professional", "Other")
         p.nars_graphby_mc(nars, *nars_mrp_calc(), "Q2.4", title="IT MRP NARS by Computer Skill", legend= legend, ybound=[1,5], ax=a15)
 
     if graph is None or graph == "nars_game":
-        print("Plotting NARS split by age")
+        print("Plotting NARS split by gaming experience")
         f16,a16 = plt.subplots()
-        f16.set_size_inches(9.75, 6, forward=True)
+        f16.set_size_inches(12, 9, forward=True)
         legend=("Not Applicable", "MMO", "MOBA", "RPG", "RTS", "FPS", "Sandbox / Open World", "Action / Adventure", "Interactive Fiction", "Casual", "Other")
-        p.nars_graphby_ma(nars, *nars_calc(), "Q2.5", title="MRP NARS by Computer Skill", legend=legend, ybound=[1,5], ax=a16)
+        p.nars_graphby_ma(nars, *nars_calc(), "Q2.5", title="MRP NARS by Gaming Experience", legend=legend, ybound=[1,5], ax=a16)
     if graph is None or graph == "itnars_game":
-        print("Plotting IT MRP NARS split by age")
+        print("Plotting IT MRP NARS split gaming experience")
         f17,a17 = plt.subplots()
-        f17.set_size_inches(9.75, 6, forward=True)
+        f17.set_size_inches(12, 9, forward=True)
         legend=("Not Applicable", "MMO", "MOBA", "RPG", "RTS", "FPS", "Sandbox / Open World", "Action / Adventure", "Interactive Fiction", "Casual", "Other")
-        p.nars_graphby_ma(nars, *nars_mrp_calc(), "Q2.5", title="IT MRP NARS by Computer Skill", legend= legend, ybound=[1,5], ax=a17)
+        p.nars_graphby_ma(nars, *nars_mrp_calc(), "Q2.5", title="IT MRP NARS by Gaming Experience", legend= legend, ybound=[1,5], ax=a17)
 
     if graph is None or graph == "nars_mrpe":
         print("Plotting NARS split by MRP Experience")
         f18,a18 = plt.subplots()
         hq = qh.hasqs_in_val(["Q4.2_1", "Q4.2_2", "Q4.2_3", "Q4.2_4"], ["2", "3", "4", "5"])
         na = nars.associate_byinfo(*nars_calc(), hq)
-        p.nars_graphby_info(nars, na, {True:"Has MRP experience", False:"No MRP Experience"}, title="NARS by MRP Experience", ybound=[1,5], ax=a18)
+        p.nars_graphby_info(nars, na, {True:"Has MRP experience", False:"No MRP Experience"}, title="MRP NARS by MRP Experience", ybound=[1,5], ax=a18)
     if graph is None or graph == "itnars_mrpe":
         print("Plotting IT NARS split by MRP Experience")
         f19,a19 = plt.subplots()
         hq = qh.hasqs_in_val(["Q4.2_1", "Q4.2_2", "Q4.2_3", "Q4.2_4"], ["2", "3", "4", "5"])
         na = nars.associate_byinfo(*nars_mrp_calc(), hq)
-        p.nars_graphby_info(nars, na, {True:"Has MRP experience", False:"No MRP Experience"}, title="NARS by MRP Experience", ybound=[1,5], ax=a19)
+        p.nars_graphby_info(nars, na, {True:"Has MRP experience", False:"No MRP Experience"}, title="IT MRP NARS by MRP Experience", ybound=[1,5], ax=a19)
+
+    if graph is None or graph == "itswa":
+        lg = qh.list_grouper(qh.mc2list("Q3.5"), qh.mc2list("Q3.8"), qh.mc2list("Q3.11"), qh.mc2list("Q3.14"), qh.mc2list("Q3.17"), qh.mc2list("Q3.20"), 
+            qh.mc2list("Q3.23"), qh.mc2list("Q3.26"))
+        columns = ("In Person", "Phone", "Email", "SMS", "Live Chat", "Forums", "Remote Access", "Other")
+        lg.columns = columns
+        lgna = lg.drop("Not applicable",0)
+        try:
+            dec = kwargs['places']
+        except KeyError:
+            dec = 4
+        for i in lgna.columns:
+            try:
+                sys.stdout.write("{0} {2:.{1}f} {3:.{1}f}\n".format(i, dec, *u.likert_ms(lgna[i])))
+            except ZeroDivisionError:
+                sys.stdout.write("{0} {2:.{1}f} {3:.{1}f}\n".format(i, dec, np.NaN, np.NaN))
+

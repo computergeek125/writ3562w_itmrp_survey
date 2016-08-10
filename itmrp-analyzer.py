@@ -68,13 +68,15 @@ def init(reuse=False, noQ=False):
 
 def nars_calc():
     return nars.nars(settings.nars_s1), nars.nars(settings.nars_s2), nars.nars(settings.nars_s3, inverted=True)
+def nars_calc2():
+    return nars.nars(settings.nars_s1), nars.nars(settings.nars_s2_amd), nars.nars(settings.nars_s3_amd, inverted=True)
 def nars_mrp_calc():
-    return nars.nars(settings.nars_mrp_s1), nars.nars(settings.nars_mrp_s2), nars.nars(settings.nars_mrp_s3, inverted=True)
+    return nars.nars(settings.nars_itmrp_s1), nars.nars(settings.nars_itmrp_s2), nars.nars(settings.nars_itmrp_s3, inverted=True)
 
 #TODO: Text analysis (report) Grab text with selectable metadata, filtering null answers
 
-def rg(graph=None):
-    run_graphs.run_graphs(graph=graph, qh=qh, nars=nars, nars_calc=nars_calc, nars_mrp_calc=nars_mrp_calc)
+def rg(graph=None, **kwargs):
+    run_graphs.run_graphs(graph=graph, qh=qh, nars=nars, nars_calc=nars_calc, nars_mrp_calc=nars_mrp_calc, **kwargs)
 
 def reload(noQ=False):
     sys.stdout.write("Reloading local files with importlib...\n")
